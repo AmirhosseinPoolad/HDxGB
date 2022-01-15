@@ -8,5 +8,8 @@
 
 int main()
 {
-    return;
+    uint8_t *memory;
+    memory = malloc(2 << 16);
+    if (memory == NULL)
+        return;
 }
