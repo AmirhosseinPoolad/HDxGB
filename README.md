@@ -1,2 +1,2 @@
 # HDxGB
-GameBoy Emulator with C and SDL2
+GameBoy Emulator with C++ (C with classes actually) and SDL2

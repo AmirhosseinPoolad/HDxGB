@@ -5,7 +5,12 @@ project(HDxGB)
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
-add_executable(HDxGB src/main.cpp)
+file(GLOB SOURCES
+    src/*.h
+    src/*.cpp
+)
+
+add_executable(HDxGB ${SOURCES})
 target_link_libraries(HDxGB ${SDL2_LIBRARIES})
 
 target_compile_options(HDxGB PRIVATE -Werror -Wall -Wextra)
