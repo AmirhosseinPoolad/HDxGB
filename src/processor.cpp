@@ -1,11 +1,14 @@
 #include "processor.h"
 #include "memory.h"
 #include <cstdint>
+#include <endian.h>
 
 Processor::Processor(Memory *mem) { memory = mem; }
 
 void Processor::instructionDecode() {
-  // Check out this link for GBC's instruction table
+  // Check out this link for GBC's instruction table and decoding informations:
+  // https://meganesulli.com/generate-gb-opcodes/
+  // https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html
   uint8_t opcode = memory->getByte(PC);
   PC++;
   // opcode is broken into:
@@ -19,8 +22,72 @@ void Processor::instructionDecode() {
   uint8_t q = (opcode & 0b00001000) >> 3;
 
   switch (opcode) {
-  // LD r[y], r[z]
-  // clang-format off
+  // nop
+  case 0x00:
+    break;
+  // TODO: STOP 0x1000
+
+  // 16 bit immediate load
+  case 0x01: // LD BC,d16
+  case 0x11: // LD DE,d16
+  case 0x21: // LD HL,d16
+  {
+    uint8_t d2 = memory->getByte(PC++); // low byte of d16
+    uint8_t d1 = memory->getByte(PC++); // high byte of d16
+    reg[2 * p] = d1;
+    reg[2 * p + 1] = d2;
+  } break;
+  case 0x31: // LD SP,d16
+  {
+    // reversing the bytes because gameboy is little endian
+    uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
+    PC += 2;
+    SP = d16;
+  } break;
+  case 0x02: // LD (BC), A
+    memory->setByte((reg[0] << 8) | reg[1], reg[7]);
+    break;
+  case 0x12: // LD (DE), A
+    memory->setByte((reg[2] << 8 | reg[3]), reg[7]);
+    break;
+  case 0x22: // LD (HL+), A
+  {
+    memory->setByte((reg[4] << 8 | reg[5]), reg[7]);
+    // convert two 8 bit registers into a single 16 bit value
+    uint16_t HL = (reg[4] << 8) | reg[5];
+    // add one to it
+    HL++;
+    // put it back into the registers
+    reg[4] = (HL & 0xFF00) >> 8;
+    reg[5] = HL & 0x00FF;
+  } break;
+  case 0x32: // LD (HL-), A
+  {
+    memory->setByte(((reg[4] << 8) | reg[5]), reg[7]);
+    // convert two 8 bit registers into a single 16 bit value
+    uint16_t HL = (reg[4] << 8) | reg[5];
+    // subtract one from it
+    HL--;
+    // put it back into the registers
+    reg[4] = (HL & 0xFF00) >> 8;
+    reg[5] = HL & 0x00FF;
+  } break;
+  // 8 bit immediate load
+  case 0x06: // LD B, d8
+  case 0x16: // LD D, d8
+  case 0x26: // LD H, d8
+  case 0x0E: // LD C, d8
+  case 0x1E: // LD E, d8
+  case 0x2E: // LD L, d8
+  case 0x3E: // LD A, d8
+    reg[y] = memory->getByte(PC++);
+    break;
+  // 8 bit indirect load
+  case 0x36: // LD (HL), d8
+    memory->setByte((reg[4] << 8) | reg[5], memory->getByte(PC++));
+    break;
+    // LD r[y], r[z]
+    // clang-format off
   case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: //LD B, r[z]
   case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4F: //LD C, r[z]
   case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x57: //LD D, r[z]
