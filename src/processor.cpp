@@ -82,7 +82,7 @@ void Processor::instructionDecode() {
   case 0x3E: // LD A, d8
     reg[y] = memory->getByte(PC++);
     break;
-  // 8 bit indirect load
+  // 8 bit immediate indirect load
   case 0x36: // LD (HL), d8
     memory->setByte((reg[4] << 8) | reg[5], memory->getByte(PC++));
     break;
@@ -98,5 +98,62 @@ void Processor::instructionDecode() {
     // clang-format on
     reg[y] = reg[z];
     break;
+
+  // 8 bit indirect load
+  case 0x70: // LD (HL), B
+  case 0x71: // LD (HL), C
+  case 0x72: // LD (HL), D
+  case 0x73: // LD (HL), E
+  case 0x74: // LD (HL), H
+  case 0x75: // LD (HL), L
+  case 0x77: // LD (HL), A
+    memory->setByte((reg[4] << 8) | reg[5], reg[z]);
+    break;
+
+  // TODO: HALT instruction
+  case 0x76: // HALT
+    break;
+
+  // 8 bit indirect load
+  case 0x46: // LD B, (HL)
+  case 0x56: // LD D, (HL)
+  case 0x66: // LD H, (HL)
+  case 0x4E: // LD C, (HL)
+  case 0x5E: // LD E, (HL)
+  case 0x6E: // LD L, (HL)
+  case 0x7E: // LD A, (HL)
+    reg[y] = memory->getByte((reg[4] << 8) | reg[5]);
+    break;
+
+  case 0x0A: // LD A, (BC)
+    reg[7] = memory->getByte((reg[0] << 8) + reg[1]);
+    break;
+  case 0x1A: // LD A, (DE)
+    reg[7] = memory->getByte((reg[2] << 8) + reg[3]);
+    break;
+  case 0x2A: // LD A, (HL+)
+  {
+    reg[7] = memory->getByte((reg[4] << 8) + reg[5]);
+    // convert two 8 bit registers into a single 16 bit value
+    uint16_t HL = (reg[4] << 8) | reg[5];
+    // add one to it
+    HL++;
+    // put it back into the registers
+    reg[4] = (HL & 0xFF00) >> 8;
+    reg[5] = HL & 0x00FF;
+    break;
+  }
+  case 0x3A: // LD A, (HL-)
+  {
+    reg[7] = memory->getByte((reg[4] << 8) + reg[5]);
+    // convert two 8 bit registers into a single 16 bit value
+    uint16_t HL = (reg[4] << 8) | reg[5];
+    // subtract one from it
+    HL--;
+    // put it back into the registers
+    reg[4] = (HL & 0xFF00) >> 8;
+    reg[5] = HL & 0x00FF;
+    break;
+  }
   }
 }

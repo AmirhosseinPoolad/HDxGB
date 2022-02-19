@@ -8,8 +8,8 @@ Memory::~Memory(){
     free(memory);
 }
 
-uint8_t Memory::getByte(int16_t address) { return memory[address]; }
+uint8_t Memory::getByte(uint16_t address) { return memory[address]; }
 
-void Memory::setByte(int16_t address, uint8_t value) {
+void Memory::setByte(uint16_t address, uint8_t value) {
   memory[address] = value;
 }
