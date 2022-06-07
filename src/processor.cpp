@@ -1,4 +1,5 @@
 #include "processor.h"
+#include <cstdio>
 #include "memory.h"
 #include <cstdint>
 
@@ -180,6 +181,9 @@ void Processor::instructionDecode()
     }
     break;
   }
+  default:
+    fprintf(stderr,"Unknown Instruction. Opcode: %x\n",opcode);
+    break;
   }
 }
 
