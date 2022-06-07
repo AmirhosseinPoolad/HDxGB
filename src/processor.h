@@ -1,10 +1,9 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
 
-#include "SDL_stdinc.h"
 #include "memory.h"
 #include <cstdint>
-#include <sys/types.h>
+
 class Processor {
 
 private:
