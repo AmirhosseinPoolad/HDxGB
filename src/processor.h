@@ -19,6 +19,7 @@ private:
 public:
   Processor(Memory *mem);
   void instructionDecode();
+  bool checkCondition(uint8_t cc);
 };
 
 #endif

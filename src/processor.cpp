@@ -4,23 +4,24 @@
 
 Processor::Processor(Memory *mem) { memory = mem; }
 
-void Processor::instructionDecode() {
+void Processor::instructionDecode()
+{
   // Check out this link for GBC's instruction table and decoding informations:
   // https://meganesulli.com/generate-gb-opcodes/
   // https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html
-  uint8_t opcode = memory->getByte(PC);
-  PC++;
+  uint8_t opcode = memory->getByte(PC++);
   // opcode is broken into:
   //  76543210
   //  xxyyyzzz
   //  --ppq---
-  //uint8_t x = (opcode & 0b11000000) >> 6;
+  // uint8_t x = (opcode & 0b11000000) >> 6;
   uint8_t y = (opcode & 0b00111000) >> 3;
   uint8_t z = (opcode & 0b00000111) >> 0;
   uint8_t p = (opcode & 0b00110000) >> 4;
-  //uint8_t q = (opcode & 0b00001000) >> 3;
+  // uint8_t q = (opcode & 0b00001000) >> 3;
 
-  switch (opcode) {
+  switch (opcode)
+  {
   // nop
   case 0x00:
     break;
@@ -35,14 +36,16 @@ void Processor::instructionDecode() {
     uint8_t d1 = memory->getByte(PC++); // high byte of d16
     reg[2 * p] = d1;
     reg[2 * p + 1] = d2;
-  } break;
+  }
+  break;
   case 0x31: // LD SP,d16
   {
     // reversing the bytes because gameboy is little endian
     uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
     PC += 2;
     SP = d16;
-  } break;
+  }
+  break;
   case 0x02: // LD (BC), A
     memory->setByte((reg[0] << 8) | reg[1], reg[7]);
     break;
@@ -59,7 +62,8 @@ void Processor::instructionDecode() {
     // put it back into the registers
     reg[4] = (HL & 0xFF00) >> 8;
     reg[5] = HL & 0x00FF;
-  } break;
+  }
+  break;
   case 0x32: // LD (HL-), A
   {
     memory->setByte(((reg[4] << 8) | reg[5]), reg[7]);
@@ -70,7 +74,8 @@ void Processor::instructionDecode() {
     // put it back into the registers
     reg[4] = (HL & 0xFF00) >> 8;
     reg[5] = HL & 0x00FF;
-  } break;
+  }
+  break;
   // 8 bit immediate load
   case 0x06: // LD B, d8
   case 0x16: // LD D, d8
@@ -154,5 +159,50 @@ void Processor::instructionDecode() {
     reg[5] = HL & 0x00FF;
     break;
   }
+  // relative jump
+  case 0x18: // JR s8
+  {
+    int8_t offset = memory->getByte(PC++);
+    PC += offset;
+    break;
+  }
+  // conditional relative jump
+  case 0x20: // JRNZ s8
+  case 0x30: // JRNC s8
+  case 0x28: // JRZ s8
+  case 0x38: // JRC s8
+  {
+    int8_t offset = memory->getByte(PC++);
+    bool condition = checkCondition(4 - y);
+    if (condition)
+    {
+      PC += offset;
+    }
+    break;
+  }
+  }
+}
+
+// checks flag register for condition code
+// cc: 0 NZ, 1 Z, 2 NC, 3 C
+bool Processor::checkCondition(uint8_t cc)
+{
+  // zero flag -> 7th bit of F (zero indexed)
+  // carry flag -> 4th bit of F
+  if (cc == 0) // not zero
+  {
+    return !((reg[7] && 0x80) >> 7);
+  }
+  if (cc == 1) // zero
+  {
+    return ((reg[7] && 0x80) >> 7);
+  }
+  if (cc == 2) // not carry
+  {
+    return !((reg[7] && 0x10) >> 4);
+  }
+  if (cc == 3) // carry
+  {
+    return ((reg[7] && 0x10) >> 4);
   }
 }
