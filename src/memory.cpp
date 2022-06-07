@@ -4,12 +4,14 @@
 
 Memory::Memory() { memory = (uint8_t *)malloc(sizeof(uint8_t) * (2 << 16)); }
 
-Memory::~Memory(){
+Memory::~Memory()
+{
     free(memory);
 }
 
 uint8_t Memory::getByte(uint16_t address) { return memory[address]; }
 
-void Memory::setByte(uint16_t address, uint8_t value) {
-  memory[address] = value;
+void Memory::setByte(uint16_t address, uint8_t value)
+{
+    memory[address] = value;
 }
