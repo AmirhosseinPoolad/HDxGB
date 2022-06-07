@@ -181,6 +181,27 @@ void Processor::instructionDecode()
         }
         break;
     }
+    // jump
+    case 0xC3: // JP d16
+    {
+        uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
+        PC = d16;
+        break;
+    }
+    // conditional jump
+    case 0xC2: // JNZ d16
+    case 0xD2: // JNC d16
+    case 0xCA: // JZ d16
+    case 0xDA: // JC d16
+    {
+        uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
+        bool condition = checkCondition(y);
+        if (condition)
+        {
+            PC = d16;
+        }
+        break;
+    }
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
