@@ -21,6 +21,5 @@ add_executable(HDxGB ${SOURCES})
 target_link_libraries(HDxGB ${SDL2_LIBRARY})
 
 message(STATUS "include dir=${SDL2_INCLUDE_DIR}")
-message(STATUS "MY_VARIABLE=${SDL2_LIBRARIES}")
 
 target_compile_options(HDxGB PRIVATE)# -Werror -Wall -Wextra)

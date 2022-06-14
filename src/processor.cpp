@@ -150,9 +150,11 @@ void Processor::instructionDecode()
     }
     case 0x3A: // LD A, (HL-)
     {
-        reg[7] = memory->getByte((reg[4] << 8) + reg[5]);
         // convert two 8 bit registers into a single 16 bit value
+        // TODO: Macro this maybe?
         uint16_t HL = (reg[4] << 8) | reg[5];
+        // load (HL) to register A
+        reg[7] = memory->getByte(HL);
         // subtract one from it
         HL--;
         // put it back into the registers
@@ -200,6 +202,89 @@ void Processor::instructionDecode()
         {
             PC = d16;
         }
+        break;
+    }
+    case 0xE9: // JP HL
+    {
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        PC = HL;
+    }
+    // 8 bit increment
+    case 0x04: // INC B
+    case 0x0C: // INC C
+    case 0x14: // INC D
+    case 0x1C: // INC E
+    case 0x24: // INC H
+    case 0x2C: // INC L
+    case 0x3C: // INC A
+    {
+        reg[y] += 1;
+        break;
+    }
+    // indirect increment
+    case 0x34: // INC (HL)
+    {
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        val++;
+        memory->setByte(HL, val);
+        break;
+    }
+    // 8 bit decrement
+    case 0x05: // DEC B
+    case 0x0D: // DEC C
+    case 0x15: // DEC D
+    case 0x1D: // DEC E
+    case 0x25: // DEC H
+    case 0x2D: // DEC L
+    case 0x3D: // DEC A
+    {
+        reg[y] -= 1;
+        break;
+    }
+    // indirect decrement
+    case 0x35: // DEC (HL)
+    {
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        val--;
+        memory->setByte(HL, val);
+        break;
+    }
+    // 16 bit increment
+    case 0x03: // INC BC
+    case 0x13: // INC DE
+    case 0x23: // INC HL
+    {
+        // ironically i think this would've been easier in assembly with ADDC or smth
+        uint16_t registerPair = (reg[2 * p] << 8) | reg[(2 * p) + 1];
+        registerPair++;
+        reg[2 * p] = (registerPair & 0xFF00) >> 8;
+        reg[(2 * p) + 1] = (registerPair & 0x00FF);
+
+        break;
+    }
+    case 0x33: // INC SP
+    {
+        SP++;
+        break;
+    }
+    // 16 bit decrement
+    case 0x0B: // DEC BC
+    case 0x1B: // DEC DE
+    case 0x2B: // DEC HL
+    {
+        // ironically i think this would've been easier in assembly with ADDC or smth
+        uint16_t registerPair = (reg[2 * p] << 8) | reg[(2 * p) + 1];
+        registerPair--;
+        reg[2 * p] = (registerPair & 0xFF00) >> 8;
+        reg[(2 * p) + 1] = (registerPair & 0x00FF);
+
+        break;
+    }
+    case 0x3B: // DEC SP
+    {
+        SP++;
         break;
     }
     default:
