@@ -5,7 +5,7 @@
 #include <cstdint>
 
 enum Flag {CARRY = 4, HALF_CARRY, SUBTRACT, ZERO};
-enum Operation {ADD, SUB};
+enum Operation {ADD, SUB, AND, XOR, OR, CMP};
 
 class Processor
 {

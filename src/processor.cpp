@@ -300,7 +300,7 @@ void Processor::instructionDecode()
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
         uint8_t val = reg[z]; // value to be added
         reg[7] += val;
-        ALUOpUpdateFlag(acc_pre,val,ADD);
+        ALUOpUpdateFlag(acc_pre, val, ADD);
         break;
     }
     case 0x86: // ADD A, (HL)
@@ -309,7 +309,7 @@ void Processor::instructionDecode()
         uint16_t HL = (reg[4] << 8) | reg[5];
         uint8_t val = memory->getByte(HL);
         reg[7] += val;
-        ALUOpUpdateFlag(acc_pre,val,ADD);
+        ALUOpUpdateFlag(acc_pre, val, ADD);
         break;
     }
 
@@ -323,7 +323,7 @@ void Processor::instructionDecode()
     {
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
         uint8_t val = reg[z] + getFlag(CARRY); // value to be added
-        ALUOpUpdateFlag(acc_pre,val,ADD);
+        ALUOpUpdateFlag(acc_pre, val, ADD);
         break;
     }
     case 0x8E: // ADC A, (HL)
@@ -332,7 +332,7 @@ void Processor::instructionDecode()
         uint16_t HL = (reg[4] << 8) | reg[5];
         uint8_t val = memory->getByte(HL) + getFlag(CARRY);
         reg[7] += val;
-        ALUOpUpdateFlag(acc_pre,val,ADD);
+        ALUOpUpdateFlag(acc_pre, val, ADD);
         break;
     }
     case 0x90: // SUB A, B
@@ -346,7 +346,7 @@ void Processor::instructionDecode()
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
         uint8_t val = reg[z]; // value to be subtracted
         reg[7] -= val;
-        ALUOpUpdateFlag(acc_pre,val,SUB);
+        ALUOpUpdateFlag(acc_pre, val, SUB);
         break;
     }
     case 0x96: // SUB A, (HL)
@@ -356,7 +356,7 @@ void Processor::instructionDecode()
         uint8_t val = memory->getByte(HL);
         reg[7] -= val;
         setFlag(SUBTRACT);
-        ALUOpUpdateFlag(acc_pre,val,SUB);
+        ALUOpUpdateFlag(acc_pre, val, SUB);
         break;
     }
 
@@ -371,7 +371,7 @@ void Processor::instructionDecode()
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
         uint8_t val = reg[z] + getFlag(CARRY); // value to be subtracted
         reg[7] -= val;
-        ALUOpUpdateFlag(acc_pre,val,SUB);
+        ALUOpUpdateFlag(acc_pre, val, SUB);
         break;
     }
     case 0x9E: // SBC A, (HL)
@@ -380,10 +380,101 @@ void Processor::instructionDecode()
         uint16_t HL = (reg[4] << 8) | reg[5];
         uint8_t val = memory->getByte(HL) + getFlag(CARRY);
         reg[7] -= val;
-        ALUOpUpdateFlag(acc_pre,val,SUB);
+        ALUOpUpdateFlag(acc_pre, val, SUB);
         break;
     }
-    
+
+    case 0xA0: // AND B
+    case 0xA1: // AND C
+    case 0xA2: // AND D
+    case 0xA3: // AND E
+    case 0xA4: // AND H
+    case 0xA5: // AND L
+    case 0xA7: // AND A
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = reg[z];
+        reg[7] &= val;
+        ALUOpUpdateFlag(acc_pre, val, AND);
+        break;
+    }
+    case 0xA6: // AND (HL)
+    {
+        uint8_t acc_pre = reg[7];
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        reg[7] &= val;
+        ALUOpUpdateFlag(acc_pre, val, AND);
+        break;
+    }
+    case 0xA8: // XOR B
+    case 0xA9: // XOR C
+    case 0xAA: // XOR D
+    case 0xAB: // XOR E
+    case 0xAC: // XOR H
+    case 0xAD: // XOR L
+    case 0xAF: // XOR A
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = reg[z];
+        reg[7] ^= val;
+        ALUOpUpdateFlag(acc_pre, val, XOR);
+        break;
+    }
+    case 0xAE: // XOR (HL)
+    {
+        uint8_t acc_pre = reg[7];
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        reg[7] ^= val;
+        ALUOpUpdateFlag(acc_pre, val, XOR);
+        break;
+    }
+    case 0xB0: // OR B
+    case 0xB1: // OR C
+    case 0xB2: // OR D
+    case 0xB3: // OR E
+    case 0xB4: // OR H
+    case 0xB5: // OR L
+    case 0xB7: // OR A
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = reg[z];
+        reg[7] |= val;
+        ALUOpUpdateFlag(acc_pre, val, OR);
+        break;
+    }
+    case 0xB6: // OR (HL)
+    {
+        uint8_t acc_pre = reg[7];
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        reg[7] |= val;
+        ALUOpUpdateFlag(acc_pre, val, OR);
+        break;
+    }
+    case 0xB8: // CMP B
+    case 0xB9: // CMP C
+    case 0xBA: // CMP D
+    case 0xBB: // CMP E
+    case 0xBC: // CMP H
+    case 0xBD: // CMP L
+    case 0xBF: // CMP A
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = reg[z];
+        ALUOpUpdateFlag(acc_pre, val, CMP);
+        break;
+    }
+    case 0xBE: // CMP (HL)
+    {
+        uint8_t acc_pre = reg[7];
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        ALUOpUpdateFlag(acc_pre, val, CMP);
+        break;
+    }
+
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
@@ -430,42 +521,61 @@ uint8_t Processor::getFlag(enum Flag flag)
 
 void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, int op)
 {
-    if(op != SUB)
-        resetFlag(SUBTRACT);
-    else
-        setFlag(SUBTRACT);
+    // reset all flags
+    // not sure if i'm supposed to do this tbh
+    reg[6] = 0;
 
     switch (op)
     {
     case ADD:
-        if ((acc_pre - val) == 0)
-            {
-                setFlag(ZERO);
-            }
-            if ((acc_pre & 0xF) < (val & 0xF))
-            {
-                setFlag(HALF_CARRY);
-            }
-            if (acc_pre < val)
-            {
-                setFlag(CARRY);
-            }
-            break;
+    if ((uint8_t)(acc_pre + val) == 0)
+        {
+            setFlag(ZERO);
+        }
+        if ((acc_pre & 0xF) + (val & 0xF) > 0x0F)
+        {
+            setFlag(HALF_CARRY);
+        }
+        // cast to unsigned because we need more than 8 bits to see if we're past 8 bits
+        if ((unsigned int)(acc_pre) + (unsigned int)(val) > 0xFF)
+        {
+            setFlag(CARRY);
+        }
+        break;
     case SUB:
-        if ((uint8_t)(acc_pre + val) == 0)
-            {
-                setFlag(ZERO);
-            }
-            if ((acc_pre & 0xF) + (val & 0xF) > 0x0F)
-            {
-                setFlag(HALF_CARRY);
-            }
-            // cast to unsigned because we need more than 8 bits to see if we're past 8 bits
-            if ((unsigned int)(acc_pre) + (unsigned int)(val) > 0xFF)
-            {
-                setFlag(CARRY);
-            }
-            break;
+    case CMP:
+        setFlag(SUBTRACT);
+        if ((acc_pre - val) == 0)
+        {
+            setFlag(ZERO);
+        }
+        if ((acc_pre & 0xF) < (val & 0xF))
+        {
+            setFlag(HALF_CARRY);
+        }
+        if (acc_pre < val)
+        {
+            setFlag(CARRY);
+        }
+        break;
+    case AND:
+        if ((uint8_t)(acc_pre & val) == 0)
+            setFlag(ZERO);
+        setFlag(HALF_CARRY);
+        resetFlag(CARRY);
+        break;
+    case OR:
+        if ((uint8_t)(acc_pre | val) == 0)
+            setFlag(ZERO);
+        resetFlag(HALF_CARRY);
+        resetFlag(CARRY);
+        break;
+    case XOR:
+        if ((uint8_t)(acc_pre ^ val) == 0)
+            setFlag(ZERO);
+        resetFlag(HALF_CARRY);
+        resetFlag(CARRY);
+        break;
     }
     
 }
