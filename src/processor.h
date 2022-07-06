@@ -4,6 +4,9 @@
 #include "memory.h"
 #include <cstdint>
 
+enum Flag {CARRY = 4, HALF_CARRY, SUBTRACT, ZERO};
+enum Operation {ADD, SUB};
+
 class Processor
 {
 
@@ -16,6 +19,11 @@ private:
     // Registers: B, C, D, E, H, L, F, A
     // B to L are general porpuse, F is flag register and A is accumulator
     uint8_t reg[8];
+
+    void setFlag(enum Flag flag);
+    void resetFlag(enum Flag flag);
+    uint8_t getFlag(enum Flag flag);
+    void ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, int op);
 
 public:
     Processor(Memory *mem);

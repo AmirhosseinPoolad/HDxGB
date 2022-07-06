@@ -3,6 +3,8 @@
 #include "memory.h"
 #include <cstdint>
 
+// TODO: Add macros for HL (and other register pairs)
+
 Processor::Processor(Memory *mem) { memory = mem; }
 
 void Processor::instructionDecode()
@@ -287,6 +289,101 @@ void Processor::instructionDecode()
         SP++;
         break;
     }
+    case 0x80: // ADD A, B
+    case 0x81: // ADD A, C
+    case 0x82: // ADD A, D
+    case 0x83: // ADD A, E
+    case 0x84: // ADD A, H
+    case 0x85: // ADD A, L
+    case 0x87: // ADD A, A
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t val = reg[z]; // value to be added
+        reg[7] += val;
+        ALUOpUpdateFlag(acc_pre,val,ADD);
+        break;
+    }
+    case 0x86: // ADD A, (HL)
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        reg[7] += val;
+        ALUOpUpdateFlag(acc_pre,val,ADD);
+        break;
+    }
+
+    case 0x88: // ADC A, B
+    case 0x89: // ADC A, C
+    case 0x8A: // ADC A, D
+    case 0x8B: // ADC A, E
+    case 0x8C: // ADC A, H
+    case 0x8D: // ADC A, L
+    case 0x8F: // ADC A, A
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t val = reg[z] + getFlag(CARRY); // value to be added
+        ALUOpUpdateFlag(acc_pre,val,ADD);
+        break;
+    }
+    case 0x8E: // ADC A, (HL)
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL) + getFlag(CARRY);
+        reg[7] += val;
+        ALUOpUpdateFlag(acc_pre,val,ADD);
+        break;
+    }
+    case 0x90: // SUB A, B
+    case 0x91: // SUB A, C
+    case 0x92: // SUB A, D
+    case 0x93: // SUB A, E
+    case 0x94: // SUB A, H
+    case 0x95: // SUB A, L
+    case 0x97: // SUB A, A
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t val = reg[z]; // value to be subtracted
+        reg[7] -= val;
+        ALUOpUpdateFlag(acc_pre,val,SUB);
+        break;
+    }
+    case 0x96: // SUB A, (HL)
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL);
+        reg[7] -= val;
+        setFlag(SUBTRACT);
+        ALUOpUpdateFlag(acc_pre,val,SUB);
+        break;
+    }
+
+    case 0x98: // SBC A, B
+    case 0x99: // SBC A, C
+    case 0x9A: // SBC A, D
+    case 0x9B: // SBC A, E
+    case 0x9C: // SBC A, H
+    case 0x9D: // SBC A, L
+    case 0x9F: // SBC A, A
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t val = reg[z] + getFlag(CARRY); // value to be subtracted
+        reg[7] -= val;
+        ALUOpUpdateFlag(acc_pre,val,SUB);
+        break;
+    }
+    case 0x9E: // SBC A, (HL)
+    {
+        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t val = memory->getByte(HL) + getFlag(CARRY);
+        reg[7] -= val;
+        ALUOpUpdateFlag(acc_pre,val,SUB);
+        break;
+    }
+    
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
@@ -301,18 +398,74 @@ bool Processor::checkCondition(uint8_t cc)
     // carry flag -> 4th bit of F
     if (cc == 0) // not zero
     {
-        return !((reg[7] && 0x80) >> 7);
+        return !getFlag(ZERO);
     }
     if (cc == 1) // zero
     {
-        return ((reg[7] && 0x80) >> 7);
+        return getFlag(ZERO);
     }
     if (cc == 2) // not carry
     {
-        return !((reg[7] && 0x10) >> 4);
+        return !getFlag(CARRY);
     }
     if (cc == 3) // carry
     {
-        return ((reg[7] && 0x10) >> 4);
+        return getFlag(CARRY);
     }
+}
+
+void Processor::setFlag(enum Flag flag)
+{
+    reg[6] |= (1U << flag);
+}
+void Processor::resetFlag(enum Flag flag)
+{
+    reg[6] &= ~(1U << flag);
+}
+
+uint8_t Processor::getFlag(enum Flag flag)
+{
+    return (reg[6] >> flag) & 1U;
+}
+
+void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, int op)
+{
+    if(op != SUB)
+        resetFlag(SUBTRACT);
+    else
+        setFlag(SUBTRACT);
+
+    switch (op)
+    {
+    case ADD:
+        if ((acc_pre - val) == 0)
+            {
+                setFlag(ZERO);
+            }
+            if ((acc_pre & 0xF) < (val & 0xF))
+            {
+                setFlag(HALF_CARRY);
+            }
+            if (acc_pre < val)
+            {
+                setFlag(CARRY);
+            }
+            break;
+    case SUB:
+        if ((uint8_t)(acc_pre + val) == 0)
+            {
+                setFlag(ZERO);
+            }
+            if ((acc_pre & 0xF) + (val & 0xF) > 0x0F)
+            {
+                setFlag(HALF_CARRY);
+            }
+            // cast to unsigned because we need more than 8 bits to see if we're past 8 bits
+            if ((unsigned int)(acc_pre) + (unsigned int)(val) > 0xFF)
+            {
+                setFlag(CARRY);
+            }
+            break;
+    }
+    
 }
