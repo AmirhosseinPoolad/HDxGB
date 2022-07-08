@@ -503,6 +503,8 @@ bool Processor::checkCondition(uint8_t cc)
     {
         return getFlag(CARRY);
     }
+
+    return false;
 }
 
 void Processor::setFlag(enum Flag flag)

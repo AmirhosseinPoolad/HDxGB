@@ -22,4 +22,4 @@ target_link_libraries(HDxGB ${SDL2_LIBRARY})
 
 message(STATUS "include dir=${SDL2_INCLUDE_DIR}")
 
-target_compile_options(HDxGB PRIVATE)# -Werror -Wall -Wextra)
+target_compile_options(HDxGB PRIVATE -Werror -Wall -Wextra)
