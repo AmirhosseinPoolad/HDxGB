@@ -474,7 +474,70 @@ void Processor::instructionDecode()
         ALUOpUpdateFlag(acc_pre, val, CMP);
         break;
     }
-
+    // 8 bit immediate ALU
+    case 0xC6: // ADD d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++);
+        reg[7] += val;
+        ALUOpUpdateFlag(acc_pre, val, ADD);
+        break;
+    }
+    case 0xCE: // ADC d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++) + getFlag(CARRY);
+        reg[7] += val;
+        ALUOpUpdateFlag(acc_pre, val, ADD);
+        break;
+    }
+    case 0xD6: // SUB d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++);
+        reg[7] -= val;
+        ALUOpUpdateFlag(acc_pre, val, SUB);
+        break;
+    }
+    case 0xDE: // SBC d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++) + getFlag(CARRY);
+        reg[7] -= val;
+        ALUOpUpdateFlag(acc_pre, val, SUB);
+        break;
+    }
+    case 0xE6: // AND d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++);
+        reg[7] &= val;
+        ALUOpUpdateFlag(acc_pre, val, AND);
+        break;
+    }
+    case 0xEE: // XOR d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++);
+        reg[7] ^= val;
+        ALUOpUpdateFlag(acc_pre, val, XOR);
+        break;
+    }
+    case 0xF6: // OR d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++);
+        reg[7] |= val;
+        ALUOpUpdateFlag(acc_pre, val, OR);
+        break;
+    }
+    case 0xFE: // CMP d8
+    {
+        uint8_t acc_pre = reg[7];
+        uint8_t val = memory->getByte(PC++);
+        ALUOpUpdateFlag(acc_pre, val, CMP);
+        break;
+    }
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
