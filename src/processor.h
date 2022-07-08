@@ -6,6 +6,8 @@
 
 namespace Flag {enum Flags {CARRY = 4, HALF_CARRY, SUBTRACT, ZERO};};
 namespace ALUOp {enum Operation {ADD, SUB, AND, XOR, OR, CMP};};
+namespace Reg {enum Registers {B, C, D , E, H, L, F, A};};
+namespace RegPair{enum RegisterPairs {BC, DE, HL, AF};};
 
 class Processor
 {
@@ -24,6 +26,8 @@ private:
     void resetFlag(enum Flag::Flags flag);
     uint8_t getFlag(enum Flag::Flags flag);
     void ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operation op);
+    uint16_t getRegisterPair(enum RegPair::RegisterPairs rp);
+    void setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val);
 
 public:
     Processor(Memory *mem);

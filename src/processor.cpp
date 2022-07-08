@@ -37,6 +37,10 @@ void Processor::instructionDecode()
     {
         uint8_t d2 = memory->getByte(PC++); // low byte of d16
         uint8_t d1 = memory->getByte(PC++); // high byte of d16
+        uint16_t val = (d1 << 8) | d1;
+        // Note to c++: just use the int coward
+        enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
+        setRegisterPair(rp, val);
         reg[2 * p] = d1;
         reg[2 * p + 1] = d2;
     }
@@ -50,35 +54,27 @@ void Processor::instructionDecode()
     }
     break;
     case 0x02: // LD (BC), A
-        memory->setByte((reg[0] << 8) | reg[1], reg[7]);
+        memory->setByte(getRegisterPair(RegPair::BC), reg[7]);
         break;
     case 0x12: // LD (DE), A
-        memory->setByte((reg[2] << 8 | reg[3]), reg[7]);
+        memory->setByte(getRegisterPair(RegPair::DE), reg[7]);
         break;
     case 0x22: // LD (HL+), A
     {
-        memory->setByte((reg[4] << 8 | reg[5]), reg[7]);
-        // convert two 8 bit registers into a single 16 bit value
-        uint16_t HL = (reg[4] << 8) | reg[5];
-        // add one to it
+        uint16_t HL = getRegisterPair(RegPair::HL);
+        memory->setByte(HL, reg[7]);
         HL++;
-        // put it back into the registers
-        reg[4] = (HL & 0xFF00) >> 8;
-        reg[5] = HL & 0x00FF;
+        setRegisterPair(RegPair::HL, HL);
+        break;
     }
-    break;
     case 0x32: // LD (HL-), A
     {
-        memory->setByte(((reg[4] << 8) | reg[5]), reg[7]);
-        // convert two 8 bit registers into a single 16 bit value
-        uint16_t HL = (reg[4] << 8) | reg[5];
-        // subtract one from it
-        HL--;
-        // put it back into the registers
-        reg[4] = (HL & 0xFF00) >> 8;
-        reg[5] = HL & 0x00FF;
+        uint16_t HL = getRegisterPair(RegPair::HL);
+        memory->setByte(HL, reg[7]);
+        HL++;
+        setRegisterPair(RegPair::HL, HL);
+        break;
     }
-    break;
     // 8 bit immediate load
     case 0x06: // LD B, d8
     case 0x16: // LD D, d8
@@ -91,7 +87,7 @@ void Processor::instructionDecode()
         break;
     // 8 bit immediate indirect load
     case 0x36: // LD (HL), d8
-        memory->setByte((reg[4] << 8) | reg[5], memory->getByte(PC++));
+        memory->setByte(getRegisterPair(RegPair::HL), memory->getByte(PC++));
         break;
         // LD r[y], r[z]
         // clang-format off
@@ -114,7 +110,7 @@ void Processor::instructionDecode()
     case 0x74: // LD (HL), H
     case 0x75: // LD (HL), L
     case 0x77: // LD (HL), A
-        memory->setByte((reg[4] << 8) | reg[5], reg[z]);
+        memory->setByte(getRegisterPair(RegPair::HL), reg[z]);
         break;
 
     // TODO: HALT instruction
@@ -129,39 +125,29 @@ void Processor::instructionDecode()
     case 0x5E: // LD E, (HL)
     case 0x6E: // LD L, (HL)
     case 0x7E: // LD A, (HL)
-        reg[y] = memory->getByte((reg[4] << 8) | reg[5]);
+        reg[y] = memory->getByte(getRegisterPair(RegPair::HL));
         break;
 
     case 0x0A: // LD A, (BC)
-        reg[7] = memory->getByte((reg[0] << 8) + reg[1]);
+        reg[7] = memory->getByte(getRegisterPair(RegPair::BC));
         break;
     case 0x1A: // LD A, (DE)
-        reg[7] = memory->getByte((reg[2] << 8) + reg[3]);
+        reg[7] = memory->getByte(getRegisterPair(RegPair::DE));
         break;
     case 0x2A: // LD A, (HL+)
     {
-        reg[7] = memory->getByte((reg[4] << 8) + reg[5]);
-        // convert two 8 bit registers into a single 16 bit value
-        uint16_t HL = (reg[4] << 8) | reg[5];
-        // add one to it
+        uint16_t HL = getRegisterPair(RegPair::HL);
+        reg[7] = memory->getByte(HL);
         HL++;
-        // put it back into the registers
-        reg[4] = (HL & 0xFF00) >> 8;
-        reg[5] = HL & 0x00FF;
+        setRegisterPair(RegPair::HL, HL);
         break;
     }
     case 0x3A: // LD A, (HL-)
     {
-        // convert two 8 bit registers into a single 16 bit value
-        // TODO: Macro this maybe?
-        uint16_t HL = (reg[4] << 8) | reg[5];
-        // load (HL) to register A
+        uint16_t HL = getRegisterPair(RegPair::HL);
         reg[7] = memory->getByte(HL);
-        // subtract one from it
         HL--;
-        // put it back into the registers
-        reg[4] = (HL & 0xFF00) >> 8;
-        reg[5] = HL & 0x00FF;
+        setRegisterPair(RegPair::HL, HL);
         break;
     }
     // relative jump
@@ -208,7 +194,7 @@ void Processor::instructionDecode()
     }
     case 0xE9: // JP HL
     {
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         PC = HL;
     }
     // 8 bit increment
@@ -226,7 +212,7 @@ void Processor::instructionDecode()
     // indirect increment
     case 0x34: // INC (HL)
     {
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
         val++;
         memory->setByte(HL, val);
@@ -247,7 +233,7 @@ void Processor::instructionDecode()
     // indirect decrement
     case 0x35: // DEC (HL)
     {
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
         val--;
         memory->setByte(HL, val);
@@ -258,11 +244,10 @@ void Processor::instructionDecode()
     case 0x13: // INC DE
     case 0x23: // INC HL
     {
-        // ironically i think this would've been easier in assembly with ADDC or smth
-        uint16_t registerPair = (reg[2 * p] << 8) | reg[(2 * p) + 1];
+        enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
+        uint16_t registerPair = getRegisterPair(rp);
         registerPair++;
-        reg[2 * p] = (registerPair & 0xFF00) >> 8;
-        reg[(2 * p) + 1] = (registerPair & 0x00FF);
+        setRegisterPair(rp, registerPair);
 
         break;
     }
@@ -276,11 +261,10 @@ void Processor::instructionDecode()
     case 0x1B: // DEC DE
     case 0x2B: // DEC HL
     {
-        // ironically i think this would've been easier in assembly with ADDC or smth
-        uint16_t registerPair = (reg[2 * p] << 8) | reg[(2 * p) + 1];
+        enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
+        uint16_t registerPair = getRegisterPair(rp);
         registerPair--;
-        reg[2 * p] = (registerPair & 0xFF00) >> 8;
-        reg[(2 * p) + 1] = (registerPair & 0x00FF);
+        setRegisterPair(rp, registerPair);
 
         break;
     }
@@ -643,4 +627,17 @@ void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operati
         break;
     }
     
+}
+
+uint16_t Processor::getRegisterPair(enum RegPair::RegisterPairs rp)
+{
+    uint16_t pair = (reg[2 * rp] << 8) | reg[2 * (rp + 1)];
+    return pair;
+}
+void Processor::setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val)
+{
+    uint8_t high = (val & 0xFF00) >> 8;
+    uint8_t low = val & 0x00FF;
+    reg[2 * rp] = high;
+    reg[2 * (rp + 1)] = low;
 }
