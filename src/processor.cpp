@@ -522,6 +522,26 @@ void Processor::instructionDecode()
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
         break;
     }
+    // register pair add
+    case 0x09: // ADD HL, BC
+    case 0x19: // ADD HL, DE
+    case 0x29: // ADD HL, HL
+    {
+        // TODO: update flags for this and other instructions
+        enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
+        uint16_t regPair = getRegisterPair(rp);
+        uint16_t HL = getRegisterPair(RegPair::HL);
+        HL += regPair;
+        setRegisterPair(RegPair::HL, HL);
+        break;
+    }
+    case 0x39: // ADD HL, SP
+    {
+        uint16_t HL = getRegisterPair(RegPair::HL);
+        HL += SP;
+        setRegisterPair(RegPair::HL, HL);
+        break;
+    }
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
