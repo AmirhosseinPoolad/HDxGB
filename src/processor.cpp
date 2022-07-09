@@ -3,8 +3,6 @@
 #include "memory.h"
 #include <cstdint>
 
-// TODO: Add macros for HL (and other register pairs)
-
 Processor::Processor(Memory *mem) { memory = mem; }
 
 void Processor::instructionDecode()
