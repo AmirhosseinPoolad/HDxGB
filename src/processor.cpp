@@ -43,16 +43,16 @@ void Processor::instructionDecode()
         setRegisterPair(rp, val);
         reg[2 * p] = d1;
         reg[2 * p + 1] = d2;
+        break;
     }
-    break;
     case 0x31: // LD SP,d16
     {
         // reversing the bytes because gameboy is little endian
         uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
         PC += 2;
         SP = d16;
+        break;
     }
-    break;
     case 0x02: // LD (BC), A
         memory->setByte(getRegisterPair(RegPair::BC), reg[7]);
         break;
@@ -91,13 +91,13 @@ void Processor::instructionDecode()
         break;
         // LD r[y], r[z]
         // clang-format off
-  case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: //LD B, r[z]
-  case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4F: //LD C, r[z]
-  case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x57: //LD D, r[z]
-  case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5F: //LD E, r[z]
-  case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x67: //LD H, r[z]
-  case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6F: //LD L, r[z]
-  case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: //LD A, r[z]
+    case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: //LD B, r[z]
+    case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4F: //LD C, r[z]
+    case 0x50: case 0x51: case 0x52: case 0x53: case 0x54: case 0x55: case 0x57: //LD D, r[z]
+    case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5F: //LD E, r[z]
+    case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x67: //LD H, r[z]
+    case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6F: //LD L, r[z]
+    case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: //LD A, r[z]
         // clang-format on
         reg[y] = reg[z];
         break;
@@ -206,6 +206,7 @@ void Processor::instructionDecode()
     case 0x2C: // INC L
     case 0x3C: // INC A
     {
+        ALUOpUpdateFlag(reg[y], 1, ALUOp::INC);
         reg[y] += 1;
         break;
     }
@@ -214,6 +215,7 @@ void Processor::instructionDecode()
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
+        ALUOpUpdateFlag(val, 1, ALUOp::INC);
         val++;
         memory->setByte(HL, val);
         break;
@@ -227,6 +229,7 @@ void Processor::instructionDecode()
     case 0x2D: // DEC L
     case 0x3D: // DEC A
     {
+        ALUOpUpdateFlag(reg[y], 1, ALUOp::DEC);
         reg[y] -= 1;
         break;
     }
@@ -235,6 +238,7 @@ void Processor::instructionDecode()
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
+        ALUOpUpdateFlag(val, 1, ALUOp::DEC);
         val--;
         memory->setByte(HL, val);
         break;
@@ -248,7 +252,6 @@ void Processor::instructionDecode()
         uint16_t registerPair = getRegisterPair(rp);
         registerPair++;
         setRegisterPair(rp, registerPair);
-
         break;
     }
     case 0x33: // INC SP
@@ -270,7 +273,7 @@ void Processor::instructionDecode()
     }
     case 0x3B: // DEC SP
     {
-        SP++;
+        SP--;
         break;
     }
     case 0x80: // ADD A, B
@@ -527,10 +530,20 @@ void Processor::instructionDecode()
     case 0x19: // ADD HL, DE
     case 0x29: // ADD HL, HL
     {
-        // TODO: update flags for this and other instructions
         enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
         uint16_t regPair = getRegisterPair(rp);
         uint16_t HL = getRegisterPair(RegPair::HL);
+        resetFlag(Flag::SUBTRACT);
+        resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        if ((HL + regPair) == 0)
+        {
+            setFlag(Flag::ZERO);
+        }
+        if ((HL & 0xFFF) + (regPair & 0xFFF) > 0xFFF)
+        {
+            setFlag(Flag::HALF_CARRY);
+        }
         HL += regPair;
         setRegisterPair(RegPair::HL, HL);
         break;
@@ -542,6 +555,7 @@ void Processor::instructionDecode()
         setRegisterPair(RegPair::HL, HL);
         break;
     }
+
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
@@ -590,58 +604,95 @@ uint8_t Processor::getFlag(enum Flag::Flags flag)
 
 void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operation op)
 {
-    // reset all flags
-    // not sure if i'm supposed to do this tbh
-    reg[6] = 0;
-
     switch (op)
     {
-    case ALUOp::ADD:
-    if ((uint8_t)(acc_pre + val) == 0)
-        {
+    case ALUOp::INC:
+        resetFlag(Flag::SUBTRACT);
+
+        if ((uint8_t)(acc_pre + val) == 0)
             setFlag(Flag::ZERO);
-        }
+        else
+            resetFlag(Flag::ZERO);
+
         if ((acc_pre & 0xF) + (val & 0xF) > 0x0F)
-        {
             setFlag(Flag::HALF_CARRY);
-        }
+        else
+            resetFlag(Flag::HALF_CARRY);
+        break;
+
+    case ALUOp::ADD:
+        resetFlag(Flag::SUBTRACT);
+
+        if ((uint8_t)(acc_pre + val) == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+
+        if ((acc_pre & 0xF) + (val & 0xF) > 0x0F)
+            setFlag(Flag::HALF_CARRY);
+        else
+            resetFlag(Flag::HALF_CARRY);
         // cast to unsigned because we need more than 8 bits to see if we're past 8 bits
         if ((unsigned int)(acc_pre) + (unsigned int)(val) > 0xFF)
-        {
             setFlag(Flag::CARRY);
-        }
+        else
+            resetFlag(Flag::CARRY);
         break;
+
+    case ALUOp::DEC:
+        setFlag(Flag::SUBTRACT);
+
+        if ((acc_pre - val) == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+
+        if ((acc_pre & 0xF) < (val & 0xF))
+            setFlag(Flag::HALF_CARRY);
+        else
+            resetFlag(Flag::HALF_CARRY);
+        break;
+
     case ALUOp::SUB:
     case ALUOp::CMP:
         setFlag(Flag::SUBTRACT);
+
         if ((acc_pre - val) == 0)
-        {
             setFlag(Flag::ZERO);
-        }
+        else
+            resetFlag(Flag::ZERO);
+
         if ((acc_pre & 0xF) < (val & 0xF))
-        {
             setFlag(Flag::HALF_CARRY);
-        }
+        else
+            resetFlag(Flag::HALF_CARRY);
+
         if (acc_pre < val)
-        {
             setFlag(Flag::CARRY);
-        }
+        else
+            resetFlag(Flag::CARRY);
         break;
+
     case ALUOp::AND:
         if ((uint8_t)(acc_pre & val) == 0)
             setFlag(Flag::ZERO);
+        resetFlag(Flag::SUBTRACT);
         setFlag(Flag::HALF_CARRY);
         resetFlag(Flag::CARRY);
         break;
+        
     case ALUOp::OR:
         if ((uint8_t)(acc_pre | val) == 0)
             setFlag(Flag::ZERO);
+        resetFlag(Flag::SUBTRACT);
         resetFlag(Flag::HALF_CARRY);
         resetFlag(Flag::CARRY);
         break;
+
     case ALUOp::XOR:
         if ((uint8_t)(acc_pre ^ val) == 0)
             setFlag(Flag::ZERO);
+        resetFlag(Flag::SUBTRACT);
         resetFlag(Flag::HALF_CARRY);
         resetFlag(Flag::CARRY);
         break;

@@ -5,7 +5,7 @@
 #include <cstdint>
 
 namespace Flag {enum Flags {CARRY = 4, HALF_CARRY, SUBTRACT, ZERO};};
-namespace ALUOp {enum Operation {ADD, SUB, AND, XOR, OR, CMP};};
+namespace ALUOp {enum Operation {ADD, SUB, AND, XOR, OR, CMP, INC, DEC};};
 namespace Reg {enum Registers {B, C, D , E, H, L, F, A};};
 namespace RegPair{enum RegisterPairs {BC, DE, HL, AF};};
 
