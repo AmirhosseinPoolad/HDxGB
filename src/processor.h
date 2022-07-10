@@ -28,6 +28,8 @@ private:
     void ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operation op);
     uint16_t getRegisterPair(enum RegPair::RegisterPairs rp);
     void setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val);
+    void stackPush(uint16_t val);
+    uint16_t stackPop();
 
 public:
     Processor(Memory *mem);

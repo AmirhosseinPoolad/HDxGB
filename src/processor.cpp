@@ -205,12 +205,7 @@ void Processor::instructionDecode()
     case 0xF1: // POP AF
     {
         enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
-        uint8_t lower, higher;
-        lower = memory->getByte(SP);
-        SP++;
-        higher = memory->getByte(SP);
-        SP++;
-        uint16_t popped = (higher << 8) | lower;
+        uint16_t popped = stackPop();
         setRegisterPair(rp, popped);
     }
     case 0xC5: // PUSH BC
@@ -220,13 +215,7 @@ void Processor::instructionDecode()
     {
         enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
         uint16_t regpPair = getRegisterPair(rp);
-        uint8_t lower, higher;
-        lower = regpPair & 0xFF;
-        higher = (regpPair & 0xFF00) >> 8;
-        SP--;
-        memory->setByte(SP, higher);
-        SP--;
-        memory->setByte(SP, lower);
+        stackPush(regpPair);
         break;
     }
     case 0xE8: // ADD SP, s8
@@ -906,4 +895,26 @@ void Processor::setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val)
     {
         reg[2 * (rp + 1)] &= 0xF0; // the low 4 bits of F register should always be zero
     }
+}
+
+void Processor::stackPush(uint16_t val)
+{
+    uint8_t lower, higher;
+    lower = val & 0xFF;
+    higher = (val & 0xFF00) >> 8;
+    SP--;
+    memory->setByte(SP, higher);
+    SP--;
+    memory->setByte(SP, lower);
+}
+
+uint16_t Processor::stackPop()
+{
+    uint8_t lower, higher;
+    lower = memory->getByte(SP);
+    SP++;
+    higher = memory->getByte(SP);
+    SP++;
+    uint16_t popped = (higher << 8) | lower;
+    return popped;
 }
