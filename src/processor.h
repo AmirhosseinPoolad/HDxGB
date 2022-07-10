@@ -32,7 +32,7 @@ private:
     void setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val);
     void stackPush(uint16_t val);
     uint16_t stackPop();
-
+    void CBExecute();
 public:
     Processor(Memory *mem);
     void instructionDecode();
