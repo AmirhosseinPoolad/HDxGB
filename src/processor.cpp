@@ -303,7 +303,40 @@ void Processor::instructionDecode()
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
         PC = HL;
+        break;
     }
+    // call and ret
+    case 0xCD: // CALL a16
+    case 0xC4: // CALL NZ a16
+    case 0xD4: // CALL NC a16
+    case 0xCC: // CALL Z a16
+    case 0xDC: // CALL C a16
+    {
+        uint16_t a16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
+        PC += 2;
+        uint8_t cc = y;
+        if(opcode == 0xCD) cc = -1;
+        if (checkCondition(cc))
+        {
+            stackPush(PC);
+            PC = a16;
+        }
+        break;
+    }
+    case 0xC9: // RET
+    case 0xC0: // RET NZ
+    case 0xD0: // RET NC
+    case 0xC8: // RET Z
+    case 0xD8: // RET C
+    {
+        uint8_t cc = y;
+        if(opcode == 0xC9) cc = -1;
+        if (checkCondition(cc))
+        {
+            PC = stackPop();
+        }
+    }
+
     // 8 bit increment
     case 0x04: // INC B
     case 0x0C: // INC C
@@ -743,11 +776,15 @@ void Processor::instructionDecode()
 }
 
 // checks flag register for condition code
-// cc: 0 NZ, 1 Z, 2 NC, 3 C
+// cc: -1 none,  0 NZ, 1 Z, 2 NC, 3 C
 bool Processor::checkCondition(uint8_t cc)
 {
     // zero flag -> 7th bit of F (zero indexed)
     // carry flag -> 4th bit of F
+    if (cc == -1)
+    {
+        return true;
+    }
     if (cc == 0) // not zero
     {
         return !getFlag(Flag::ZERO);
