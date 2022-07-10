@@ -24,10 +24,16 @@ void Processor::instructionDecode()
     switch (opcode)
     {
     // nop
-    case 0x00:
+    case 0x00: // NOP
         break;
-    // TODO: STOP 0x1000
-
+    case 0x10: // STOP
+        // TODO: STOP 0x1000
+        PC += 2;
+        break;
+    case 0xF3: // DI
+        ime = false;
+    case 0xFB:
+        ime = true;
     // 16 bit immediate load
     case 0x01: // LD BC,d16
     case 0x11: // LD DE,d16
@@ -337,7 +343,12 @@ void Processor::instructionDecode()
         }
         break;
     }
-
+    case 0xD9: // RETI
+    {
+        ime = true;
+        PC = stackPop();
+        break;
+    }
     // 8 bit increment
     case 0x04: // INC B
     case 0x0C: // INC C

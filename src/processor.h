@@ -21,6 +21,8 @@ private:
     // Registers: B, C, D, E, H, L, F, A
     // B to L are general porpuse, F is flag register and A is accumulator
     uint8_t reg[8];
+    // Interrupt Master Enable
+    bool ime;
 
     void setFlag(enum Flag::Flags flag);
     void resetFlag(enum Flag::Flags flag);
