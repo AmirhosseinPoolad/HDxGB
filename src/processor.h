@@ -16,7 +16,7 @@ private:
     Memory *memory;
     // Program Counter
     uint16_t PC;
-    // Stack Pointer
+    // Stack Pointer. Descending full.
     uint16_t SP;
     // Registers: B, C, D, E, H, L, F, A
     // B to L are general porpuse, F is flag register and A is accumulator

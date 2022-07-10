@@ -148,6 +148,49 @@ void Processor::instructionDecode()
         setRegisterPair(RegPair::HL, HL);
         break;
     }
+    // stack operations:
+    case 0x08: // LD (a16), SP
+    {
+        uint8_t d2 = memory->getByte(PC++); // low byte of d16
+        uint8_t d1 = memory->getByte(PC++); // high byte of d16
+        uint16_t address = (d1 << 8) | d1;
+        uint8_t lower, higher;
+        lower = SP & 0xFF;
+        higher = (SP & 0xFF00) >> 8;
+        memory->setByte(address, lower);
+        memory->setByte(address + 1, higher);
+        break;
+    }
+    case 0xC1: // POP BC
+    case 0xD1: // POP DE
+    case 0xE1: // POP HL
+    case 0xF1: // POP AF
+    {
+        enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
+        uint8_t lower, higher;
+        lower = memory->getByte(SP);
+        SP++;
+        higher = memory->getByte(SP);
+        SP++;
+        uint16_t popped = (higher << 8) | lower;
+        setRegisterPair(rp, popped);
+    }
+    case 0xC5: // PUSH BC
+    case 0xD5: // PUSH DE
+    case 0xE5: // PUSH HL
+    case 0xF5: // PUSH AF
+    {
+        enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
+        uint16_t regpPair = getRegisterPair(rp);
+        uint8_t lower, higher;
+        lower = regpPair & 0xFF;
+        higher = (regpPair & 0xFF00) >> 8;
+        SP--;
+        memory->setByte(SP, higher);
+        SP--;
+        memory->setByte(SP, lower);
+        break;
+    }
     // relative jump
     case 0x18: // JR s8
     {
@@ -782,4 +825,8 @@ void Processor::setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val)
     uint8_t low = val & 0x00FF;
     reg[2 * rp] = high;
     reg[2 * (rp + 1)] = low;
+    if(rp == RegPair::AF)
+    {
+        reg[2 * (rp + 1)] &= 0xF0; // the low 4 bits of F register should always be zero
+    }
 }
