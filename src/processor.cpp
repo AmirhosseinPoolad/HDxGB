@@ -191,6 +191,45 @@ void Processor::instructionDecode()
         memory->setByte(SP, lower);
         break;
     }
+    case 0xE8: // ADD SP, s8
+    {
+        int16_t offset = (int8_t)memory->getByte(PC++);
+
+        if ((SP & 0xF) + (offset & 0xF) > 0xF)
+        {
+            setFlag(Flag::HALF_CARRY);
+        }
+
+        if ((SP & 0xFF)  + (offset & 0xFF) > 0xFF)
+        {
+            setFlag(Flag::CARRY);
+        }
+
+        SP = SP + offset;
+        break;
+    }
+    case 0xF8: // LD HL, SP + s8
+    {
+        int16_t offset = (int8_t)memory->getByte(PC++);
+        // TODO: test this and other s8 instructions to see if casting works as intended
+        setRegisterPair(RegPair::HL, SP + offset);
+
+        if ((SP & 0xF) + (offset & 0xF) > 0xF)
+        {
+            setFlag(Flag::HALF_CARRY);
+        }
+
+        if ((SP & 0xFF)  + (offset & 0xFF) > 0xFF)
+        {
+            setFlag(Flag::CARRY);
+        }
+        break;
+    }
+    case 0xF9: // LD SP, HL
+    {
+        SP = getRegisterPair(RegPair::HL);
+        break;
+    }
     // relative jump
     case 0x18: // JR s8
     {
