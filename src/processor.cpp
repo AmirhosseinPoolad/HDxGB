@@ -148,6 +148,44 @@ void Processor::instructionDecode()
         setRegisterPair(RegPair::HL, HL);
         break;
     }
+    case 0xE0: // LD (a8), A
+    {
+        uint16_t address = 0xFF00 + memory->getByte(PC++);
+        memory->setByte(address, reg[Reg::A]);
+        break;
+    }
+    case 0xF0: // LD A, (a8)
+    {
+        uint16_t address = 0xFF00 + memory->getByte(PC++);
+        reg[Reg::A] = memory->getByte(address);
+        break;
+    }
+    case 0xE2: // LD (C), A
+    {
+        uint16_t address = 0xFF00 + reg[Reg::C];
+        memory->setByte(address, reg[Reg::A]);
+        break;
+    }
+    case 0xF2: // LD A, (C)
+    {
+        uint16_t address = 0xFF00 + reg[Reg::C];
+        reg[Reg::A] = memory->getByte(address);
+        break;
+    }
+    case 0xEA: // LD (a16), A
+    {
+        uint16_t address = memory->getByte(PC + 1) + memory->getByte(PC);
+        PC += 2;
+        memory->setByte(address, reg[Reg::A]);
+        break;
+    }
+    case 0xFA: // LD A, (a16)
+    {
+        uint16_t address = memory->getByte(PC + 1) + memory->getByte(PC);
+        PC += 2;
+        reg[Reg::A] = memory->getByte(address);
+        break;
+    }
     // stack operations:
     case 0x08: // LD (a16), SP
     {
