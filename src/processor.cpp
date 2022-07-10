@@ -554,6 +554,79 @@ void Processor::instructionDecode()
         break;
     }
 
+    case 0x07: // RLCA
+    {
+        bool carry = reg[7] & 0x80; // last bit of reg a
+        reg[7] = reg[7] << 1;
+        if (carry)
+        {
+            reg[7] |= 0x1; // first bit should be set
+            setFlag(Flag::CARRY); // carry flag set
+        }
+        else
+        {
+            resetFlag(Flag::CARRY);
+        }
+        resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+    case 0x17: // RLA
+    {
+        bool lbit = reg[7] & 0x80; // last bit of reg a
+        uint8_t cflag = getFlag(Flag::CARRY);
+        reg[7] = reg[7] << 1;
+        if (lbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
+
+        if (cflag)
+            reg[7] |= 0x1;
+        
+        resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+    case 0x0F: // RRCA
+    {
+        bool carry = reg[7] & 0x01; // first bit of reg a
+        reg[7] = reg[7] >> 1;
+        if (carry)
+        {
+            reg[7] |= 0x80; // last bit should be set
+            setFlag(Flag::CARRY); // carry flag set
+        }
+        else
+        {
+            resetFlag(Flag::CARRY);
+        }
+        resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+    case 0x1F: // RRA
+    {
+        bool rbit = reg[7] & 0x01; // first bit of reg a
+        uint8_t cflag = getFlag(Flag::CARRY);
+        reg[7] = reg[7] >> 1;
+        if (rbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
+
+        if (cflag)
+            reg[7] |= 0x80;
+        
+        resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
