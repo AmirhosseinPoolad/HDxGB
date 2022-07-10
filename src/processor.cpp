@@ -335,6 +335,7 @@ void Processor::instructionDecode()
         {
             PC = stackPop();
         }
+        break;
     }
 
     // 8 bit increment
@@ -767,6 +768,68 @@ void Processor::instructionDecode()
         resetFlag(Flag::HALF_CARRY);
         resetFlag(Flag::SUBTRACT);
         break;
+    }
+    case 0x27: // DAA
+    {
+        // Adjust the accumulator to a BCD number after BCD addition and subtraction operations.
+        // algorithm: if subtraction flag is set, subtract 6 from low/high nibble in case of half carry/carry
+        // else add 6 to low/high nibble in case of half carry/carry
+        // using 16 bits for easier carry detection
+        uint16_t result = reg[Reg::A];
+        if (getFlag(Flag::SUBTRACT))
+        {
+            if (getFlag(Flag::HALF_CARRY))
+            {
+            result = (result - 0x06) & 0xFF;
+            }
+
+            if (getFlag(Flag::CARRY))
+            {
+                result -= 0x60;
+            }
+        }
+        else
+        {
+            if (getFlag(Flag::HALF_CARRY) || (result & 0x0F) > 0x09)
+            {
+                result += 0x06;
+            }
+
+            if (getFlag(Flag::CARRY) || result > 0x9F)
+            {
+                result += 0x60;
+            }
+        }
+        if ((result & 0xFF) == 0)
+        {
+            setFlag(Flag::ZERO);
+        }
+
+        if ((result & 0x100) == 0x100)
+        {
+            setFlag(Flag::CARRY);
+        }
+
+        resetFlag(Flag::HALF_CARRY);
+        reg[Reg::A] = result & 0xFF;
+    }
+    case 0x37: // SCF Set Carry Flag
+    {
+        resetFlag(Flag::SUBTRACT);
+        resetFlag(Flag::HALF_CARRY);
+        setFlag(Flag::CARRY);
+    }
+    case 0x2F: // CPL Complement
+    {
+        reg[7] = ~reg[7];
+        setFlag(Flag::SUBTRACT);
+        setFlag(Flag::HALF_CARRY);
+    }
+    case 0x3F: // CCF Flip Carry Flag (Why is it not *Clear* Carry Flag?!)
+    {
+        resetFlag(Flag::SUBTRACT);
+        resetFlag(Flag::HALF_CARRY);
+        getFlag(Flag::CARRY) ? resetFlag(Flag::CARRY) : setFlag(Flag::CARRY);
     }
 
     default:
