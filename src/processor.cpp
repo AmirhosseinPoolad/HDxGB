@@ -842,6 +842,19 @@ void Processor::instructionDecode()
         resetFlag(Flag::HALF_CARRY);
         getFlag(Flag::CARRY) ? resetFlag(Flag::CARRY) : setFlag(Flag::CARRY);
     }
+    // reset
+    case 0xC7: // RST 0
+    case 0xCF: // RST 1
+    case 0xD7: // RST 2
+    case 0xDF: // RST 3
+    case 0xE7: // RST 4
+    case 0xEF: // RST 5
+    case 0xF7: // RST 6
+    case 0xFF: // RST 7
+    {
+        stackPush(PC);
+        PC = y * 8;
+    }
 
     default:
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
