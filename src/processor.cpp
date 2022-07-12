@@ -1063,29 +1063,101 @@ void Processor::CBExecute()
 
     switch(opcode)
     {
-    case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x07: // RLC reg[z]
-    case 0x06: // RLC (HL)
+    case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x06: case 0x07: // RLC reg[z]
+    {
+        bool carry = operand & 0x80; // last bit of operand
+        result = operand << 1;
+        if (carry)
+        {
+            result |= 0x1; // first bit should be set
+            setFlag(Flag::CARRY); // carry flag set
+        }
+        else
+        {
+            resetFlag(Flag::CARRY);
+        }
 
-    case 0x08: case 0x09: case 0x0A: case 0x0B: case 0x0C: case 0x0D: case 0x0F: // RRC reg[z]
-    case 0x0E: // RRC (HL)
-    
-    case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x17: // RL reg[z]
-    case 0x16: // RL (HL)
-   
-    case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1F: // RR reg[z]
-    case 0x1E: // RR (HL)
-    
-    case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x27: // SLA reg[z]
-    case 0x26: // SLA (HL)
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+    case 0x08: case 0x09: case 0x0A: case 0x0B: case 0x0C: case 0x0D: case 0x0E: case 0x0F: // RRC reg[z]
+    {
+        bool carry = operand & 0x01; // first bit of operand
+        result = operand >> 1;
+        if (carry)
+        {
+            result |= 0x80; // last bit should be set
+            setFlag(Flag::CARRY); // carry flag set
+        }
+        else
+        {
+            resetFlag(Flag::CARRY);
+        }
 
-    case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2F: // SRA reg[z]
-    case 0x2E: // SRA (HL)
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+    case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17: // RL reg[z]
+   {
+        bool lbit = operand & 0x80; // last bit of operand
+        uint8_t cflag = getFlag(Flag::CARRY);
+        result = operand << 1;
+        if (lbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
 
-    case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x37: // SWAP reg[z]
-    case 0x36: // SWAP (HL)
+        if (cflag)
+            result |= 0x1;
+        
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
 
-    case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3F: // SRL reg[z]
-    case 0x3E: // SRL (HL)
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+   }
+    case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1E: case 0x1F: // RR reg[z]
+    {
+        bool rbit = operand & 0x80; // first bit of operand
+        uint8_t cflag = getFlag(Flag::CARRY);
+        result = operand >> 1;
+        if (rbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
+
+        if (cflag)
+            result |= 0x80; // last bit should be set if cflag was set
+        
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
+    }
+    case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27: // SLA reg[z]
+
+    case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2E: case 0x2F: // SRA reg[z]
+
+    case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37: // SWAP reg[z]
+
+    case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3E: case 0x3F: // SRL reg[z]
 
     // BIT y reg[z]
     case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
