@@ -36,7 +36,7 @@ private:
 public:
     Processor(Memory *mem);
     void instructionDecode();
-    bool checkCondition(uint8_t cc);
+    bool checkCondition(int8_t cc);
 };
 
 #endif

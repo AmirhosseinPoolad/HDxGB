@@ -199,7 +199,7 @@ void Processor::instructionDecode()
     {
         uint8_t d2 = memory->getByte(PC++); // low byte of d16
         uint8_t d1 = memory->getByte(PC++); // high byte of d16
-        uint16_t address = (d1 << 8) | d1;
+        uint16_t address = (d1 << 8) | d2;
         uint8_t lower, higher;
         lower = SP & 0xFF;
         higher = (SP & 0xFF00) >> 8;
@@ -866,7 +866,7 @@ void Processor::instructionDecode()
 
 // checks flag register for condition code
 // cc: -1 none,  0 NZ, 1 Z, 2 NC, 3 C
-bool Processor::checkCondition(uint8_t cc)
+bool Processor::checkCondition(int8_t cc)
 {
     // zero flag -> 7th bit of F (zero indexed)
     // carry flag -> 4th bit of F
@@ -1052,7 +1052,7 @@ void Processor::CBExecute()
     uint8_t z = (opcode & 0b00000111) >> 0;
     uint8_t operand;
     uint8_t result;
-    if ((opcode & 0xF == 0xE) || (opcode & 0xF == 0x6)) // value comes from memory
+    if (((opcode & 0xF) == 0xE) || ((opcode & 0xF) == 0x6)) // value comes from memory
     {
         operand = memory->getByte(getRegisterPair(RegPair::HL));
     }
@@ -1108,7 +1108,7 @@ void Processor::CBExecute()
         break;
     }
     case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17: // RL reg[z]
-   {
+    {
         bool lbit = operand & 0x80; // last bit of operand
         uint8_t cflag = getFlag(Flag::CARRY);
         result = operand << 1;
@@ -1128,7 +1128,7 @@ void Processor::CBExecute()
         resetFlag(Flag::HALF_CARRY);
         resetFlag(Flag::SUBTRACT);
         break;
-   }
+    }
     case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1E: case 0x1F: // RR reg[z]
     {
         bool rbit = operand & 0x80; // first bit of operand
@@ -1152,13 +1152,21 @@ void Processor::CBExecute()
         break;
     }
     case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27: // SLA reg[z]
+    {
 
+    }
     case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2E: case 0x2F: // SRA reg[z]
+    {
 
+    }
     case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37: // SWAP reg[z]
+    {
 
+    }
     case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3E: case 0x3F: // SRL reg[z]
+    {
 
+    }
     // BIT y reg[z]
     case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
     case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
@@ -1168,10 +1176,12 @@ void Processor::CBExecute()
     case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6E: case 0x6F:
     case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x76: case 0x77:
     case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7E: case 0x7F:
+    {
         result = operand;
         setFlag(Flag::HALF_CARRY);
         resetFlag(Flag::SUBTRACT);
-        if((operand && (0x1 << y)) >> y) // z bit set
+        uint8_t ybit = (result & (0x1 << y)) >> y;
+        if(!ybit) // z bit set
         {
             resetFlag(Flag::ZERO);
         }
@@ -1180,6 +1190,7 @@ void Processor::CBExecute()
             setFlag(Flag::ZERO);
         }
         break;
+    }
     // RES y reg[z]
     case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x86: case 0x87:
     case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8C: case 0x8D: case 0x8E: case 0x8F:
@@ -1201,12 +1212,14 @@ void Processor::CBExecute()
     case 0xE8: case 0xE9: case 0xEA: case 0xEB: case 0xEC: case 0xED: case 0xEE: case 0xEF:
     case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF6: case 0xF7:
     case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFE: case 0xFF:
+    {
         result = operand;
         result &= ~(0x1 << y);
         break;
     }
+    }
 
-    if ((opcode & 0xF == 0xE) || (opcode & 0xF == 0x6)) // result goes to memory
+    if (((opcode & 0xF) == 0xE) || ((opcode & 0xF) == 0x6)) // result goes to memory
     {
         memory->setByte(getRegisterPair(RegPair::HL), result);
     }
