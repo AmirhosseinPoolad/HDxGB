@@ -1131,7 +1131,7 @@ void Processor::CBExecute()
     }
     case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1E: case 0x1F: // RR reg[z]
     {
-        bool rbit = operand & 0x80; // first bit of operand
+        bool rbit = operand & 0x01; // first bit of operand
         uint8_t cflag = getFlag(Flag::CARRY);
         result = operand >> 1;
         if (rbit)
@@ -1153,19 +1153,78 @@ void Processor::CBExecute()
     }
     case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27: // SLA reg[z]
     {
+        bool lbit = operand & 0x80; // last bit of operand
+        result = operand << 1;
 
+        if (lbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
+        
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
     }
     case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2E: case 0x2F: // SRA reg[z]
     {
+        bool rbit = operand & 0x01; // first bit of operand
+        bool lbit = operand & 0x80; // last bit of operand
+        result = operand >> 1;
+        //keep the leftmost bit when doing an arithmetic shift
+        if (lbit)
+            result |= 0x80;
+        
+        if (rbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
+        
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
 
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
     }
     case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37: // SWAP reg[z]
     {
-
+        uint8_t low = operand & 0x0F;
+        uint8_t high = (operand & 0xF0) >> 4;
+        result = high | (low << 4);
+        if (result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
+        resetFlag(Flag::CARRY);
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
     }
     case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3E: case 0x3F: // SRL reg[z]
     {
+        bool rbit = operand & 0x01; // first bit of operand
+        result = operand >> 1;
+        
+        if (rbit)
+            setFlag(Flag::CARRY);
+        else
+            setFlag(Flag::CARRY);
+        
+        if(result == 0)
+            setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
 
+        resetFlag(Flag::HALF_CARRY);
+        resetFlag(Flag::SUBTRACT);
+        break;
     }
     // BIT y reg[z]
     case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
