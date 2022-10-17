@@ -32,10 +32,10 @@ private:
     void setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val);
     void stackPush(uint16_t val);
     uint16_t stackPop();
-    void CBExecute();
+    int CBExecute();
 public:
     Processor(Memory *mem);
-    void instructionDecode();
+    int Tick();
     bool checkCondition(int8_t cc);
 };
 

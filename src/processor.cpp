@@ -1,11 +1,13 @@
-#include "processor.h"
 #include <cstdio>
-#include "memory.h"
 #include <cstdint>
+
+#include "processor.h"
+#include "memory.h"
+#include "timings.h"
 
 Processor::Processor(Memory *mem) { memory = mem; }
 
-void Processor::instructionDecode()
+int Processor::Tick()
 {
     // Check out this link for GBC's instruction table and decoding informations:
     // https://meganesulli.com/generate-gb-opcodes/
@@ -20,6 +22,7 @@ void Processor::instructionDecode()
     uint8_t z = (opcode & 0b00000111) >> 0;
     uint8_t p = (opcode & 0b00110000) >> 4;
     // uint8_t q = (opcode & 0b00001000) >> 3;
+    int cycles = cycleTable[opcode];
 
     switch (opcode)
     {
@@ -32,10 +35,13 @@ void Processor::instructionDecode()
         break;
     case 0xF3: // DI
         ime = false;
+        break;
     case 0xFB:
         ime = true;
+        break;
     case 0xCB:
-        CBExecute();
+        cycles = CBExecute();
+        break;
     // 16 bit immediate load
     case 0x01: // LD BC,d16
     case 0x11: // LD DE,d16
@@ -862,6 +868,8 @@ void Processor::instructionDecode()
         fprintf(stderr, "Unknown Instruction. Opcode: %x\n", opcode);
         break;
     }
+
+    return cycles;
 }
 
 // checks flag register for condition code
@@ -1045,7 +1053,7 @@ uint16_t Processor::stackPop()
     return popped;
 }
 
-void Processor::CBExecute()
+int Processor::CBExecute()
 {
     uint8_t opcode = memory->getByte(PC++);
     uint8_t y = (opcode & 0b00111000) >> 3;
@@ -1286,4 +1294,6 @@ void Processor::CBExecute()
     {
         reg[z] = result;
     }
+
+    return CBCycleTable[opcode];
 }
