@@ -4,8 +4,20 @@
 #include "processor.h"
 #include "memory.h"
 #include "timings.h"
+#include "log.h"
+#include "disassembly.h"
 
-Processor::Processor(Memory *mem) { memory = mem; }
+Processor::Processor(Memory *mem)
+{
+    memory = mem;
+    PC = 0;
+    for(int i = 0; i < 8; i++)
+    {
+        reg[i] = 0;
+    }
+    SP = 0;
+    ime = 1;
+}
 
 int Processor::Tick()
 {
@@ -23,12 +35,17 @@ int Processor::Tick()
     uint8_t p = (opcode & 0b00110000) >> 4;
     // uint8_t q = (opcode & 0b00001000) >> 3;
     int cycles = cycleTable[opcode];
-
+    //printf("REEEEE");
+    DisassemblyObject disObj(opcode);
+    logGB(disObj);
+    
     switch (opcode)
     {
     // nop
     case 0x00: // NOP
+    {
         break;
+    }
     case 0x10: // STOP
         // TODO: STOP 0x1000
         PC += 2;
@@ -36,7 +53,7 @@ int Processor::Tick()
     case 0xF3: // DI
         ime = false;
         break;
-    case 0xFB:
+    case 0xFB: // EI
         ime = true;
         break;
     case 0xCB:
@@ -221,6 +238,7 @@ int Processor::Tick()
         enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
         uint16_t popped = stackPop();
         setRegisterPair(rp, popped);
+        break;
     }
     case 0xC5: // PUSH BC
     case 0xD5: // PUSH DE
@@ -831,24 +849,28 @@ int Processor::Tick()
 
         resetFlag(Flag::HALF_CARRY);
         reg[Reg::A] = result & 0xFF;
+        break;
     }
     case 0x37: // SCF Set Carry Flag
     {
         resetFlag(Flag::SUBTRACT);
         resetFlag(Flag::HALF_CARRY);
         setFlag(Flag::CARRY);
+        break;
     }
     case 0x2F: // CPL Complement
     {
         reg[7] = ~reg[7];
         setFlag(Flag::SUBTRACT);
         setFlag(Flag::HALF_CARRY);
+        break;
     }
     case 0x3F: // CCF Flip Carry Flag (Why is it not *Clear* Carry Flag?!)
     {
         resetFlag(Flag::SUBTRACT);
         resetFlag(Flag::HALF_CARRY);
         getFlag(Flag::CARRY) ? resetFlag(Flag::CARRY) : setFlag(Flag::CARRY);
+        break;
     }
     // reset
     case 0xC7: // RST 0
@@ -862,6 +884,7 @@ int Processor::Tick()
     {
         stackPush(PC);
         PC = y * 8;
+        break;
     }
 
     default:

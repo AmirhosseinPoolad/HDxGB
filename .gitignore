@@ -1,4 +1,5 @@
 .vscode/
 build/
-Test_Roms/
+Roms/
 .cache/
+.DS_Store

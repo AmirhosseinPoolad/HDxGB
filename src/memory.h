@@ -43,5 +43,6 @@ public:
     ~Memory();
     uint8_t getByte(uint16_t address);
     void setByte(uint16_t address, uint8_t value);
+    void loadROM(char *path);
 };
 #endif
