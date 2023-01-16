@@ -413,7 +413,9 @@ int Processor::Tick()
     // jump
     case 0xC3: // JP d16
     {
-        uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
+        uint16_t low = memory->getByte(PC);
+        uint16_t high = memory->getByte(PC + 1);
+        uint16_t d16 = (high << 8) | low;
         PC = d16;
 
         disObj.addArg(d16);
@@ -1105,7 +1107,7 @@ int Processor::Tick()
         break;
     }
 
-    //logGB(disObj);
+    logGB(disObj);
     return cycles;
 }
 
@@ -1253,18 +1255,27 @@ void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operati
 
 uint16_t Processor::getRegisterPair(enum RegPair::RegisterPairs rp)
 {
-    uint16_t pair = (reg[2 * rp] << 8) | reg[2 * (rp + 1)];
+    uint16_t pair = (reg[2 * rp] << 8) | reg[(2 * rp) + 1];
     return pair;
 }
 void Processor::setRegisterPair(enum RegPair::RegisterPairs rp, uint16_t val)
 {
-    uint8_t high = (val & 0xFF00) >> 8;
-    uint8_t low = val & 0x00FF;
-    reg[2 * rp] = high;
-    reg[2 * (rp + 1)] = low;
-    if(rp == RegPair::AF)
+    if (rp != RegPair::AF){
+        uint8_t high = (val & 0xFF00) >> 8;
+        uint8_t low = val & 0x00FF;
+        reg[2 * rp] = high;
+        reg[(2 * rp) + 1] = low;
+    }
+    // so the reg array goes BC,DE,HL,FA but register pairs go BC, DE, HL, AF
+    // this was done to make executing instructions easier but this is the drawback
+    // gotta swap 'em
+    else
     {
-        reg[2 * (rp + 1)] &= 0xF0; // the low 4 bits of F register should always be zero
+        uint8_t high = (val & 0xFF00) >> 8;
+        uint8_t low = val & 0x00FF;
+        reg[2 * rp] = low; // F register
+        reg[(2 * rp) + 1] = high; // A register
+        reg[2 * rp] &= 0xF0; // the low 4 bits of F register should always be zero
     }
 }
 

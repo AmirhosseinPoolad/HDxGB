@@ -9,26 +9,29 @@
 
 const static char regString[8][2] = {"B", "C", "D" , "E", "H", "L", "F", "A"};
 const static char regPairString[8][3] = {"BC", "DE", "HL" , "AF"};
+
+// clang-format off
 const static char opcodeString[256][10] =
 {
-//  0    1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-    "NOP", "LD", "LD", "INC", "INC", "DEC", "LD", "RLCA", "LD", "ADD", "LD", "DEC", "INC", "DEC", "LD", "RRCA",
-    "STOP", "LD", "LD", "INC", "INC", "DEC", "LD", "RLA", "JR", "ADD", "LD", "DEC", "INC", "DEC", "LD", "RRA",
-    "JRNZ", "LD", "LD", "INC", "INC", "DEC", "LD", "DAA", "JRZ", "ADD", "LD", "DEC", "INC", "DEC", "LD", "CPL",
-    "JRNC", "LD", "LD", "INC", "INC", "DEC", "LD", "SCF", "JRC", "ADD", "LD", "DEC", "INC", "DEC", "LD", "CCF",
-    "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD",
-    "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD",
-    "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD",
-    "LD", "LD", "LD", "LD", "LD", "LD", "HALT", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD", "LD",
-    "ADD", "ADD", "ADD", "ADD", "ADD", "ADD", "ADD", "ADD", "ADC", "ADC", "ADC", "ADC", "ADC", "ADC", "ADC", "ADC",
-    "SUB", "SUB", "SUB", "SUB", "SUB", "SUB", "SUB", "SUB", "SBC", "SBC", "SBC", "SBC", "SBC", "SBC", "SBC", "SBC",
-    "AND", "AND", "AND", "AND", "AND", "AND", "AND", "AND", "XOR", "XOR", "XOR", "XOR", "XOR", "XOR", "XOR", "XOR",
-    "OR", "OR", "OR", "OR", "OR", "OR", "OR", "OR", "CP", "CP", "CP", "CP", "CP", "CP", "CP", "CP",
-    "RET", "POP", "JPNZ", "JP", "CALNZ", "PUSH", "ADD", "RST", "RET", "RET", "JPZ", "CB", "CALLZ", "CALL", "ADC", "RST",
-    "RET", "POP", "JPNC", "ERR", "CALLNC", "PUSH", "SUB", "RST", "RET", "RETI", "JPC", "ERR", "CALLC", "ERR", "SBC", "RST",
-    "LD", "POP", "LD", "ERR", "ERR", "PUSH", "AND", "RST", "ADD", "JP", "LD", "ERR", "ERR", "ERR", "XOR", "RST",
-    "LD", "POP", "LD", "DI", "ERR", "PUSH", "OR", "RST", "LD", "LD", "LD", "EI", "ERR", "ERR", "CP", "RST"
+//    0       1       2       3      4        5       6       7       8      9      A       B      C       D       E       F
+    "NOP" , "LD" , "LD"  , "INC", "INC"   , "DEC" , "LD"  , "RLCA", "LD" , "ADD" , "LD" , "DEC", "INC"  , "DEC" , "LD" , "RRCA", // 0
+    "STOP", "LD" , "LD"  , "INC", "INC"   , "DEC" , "LD"  , "RLA" , "JR" , "ADD" , "LD" , "DEC", "INC"  , "DEC" , "LD" , "RRA" , // 1
+    "JRNZ", "LD" , "LD"  , "INC", "INC"   , "DEC" , "LD"  , "DAA" , "JRZ", "ADD" , "LD" , "DEC", "INC"  , "DEC" , "LD" , "CPL" , // 2
+    "JRNC", "LD" , "LD"  , "INC", "INC"   , "DEC" , "LD"  , "SCF" , "JRC", "ADD" , "LD" , "DEC", "INC"  , "DEC" , "LD" , "CCF" , // 3
+    "LD"  , "LD" , "LD"  , "LD" , "LD"    , "LD"  , "LD"  , "LD"  , "LD" , "LD"  , "LD" , "LD" , "LD"   , "LD"  , "LD" , "LD"  , // 4
+    "LD"  , "LD" , "LD"  , "LD" , "LD"    , "LD"  , "LD"  , "LD"  , "LD" , "LD"  , "LD" , "LD" , "LD"   , "LD"  , "LD" , "LD"  , // 5
+    "LD"  , "LD" , "LD"  , "LD" , "LD"    , "LD"  , "LD"  , "LD"  , "LD" , "LD"  , "LD" , "LD" , "LD"   ,  "LD" , "LD" , "LD"  , // 6
+    "LD"  , "LD" , "LD"  , "LD" , "LD"    , "LD"  , "HALT", "LD"  , "LD" , "LD"  , "LD" , "LD" , "LD"   , "LD"  , "LD" , "LD"  , // 7
+    "ADD" , "ADD", "ADD" , "ADD", "ADD"   , "ADD" , "ADD" , "ADD" , "ADC", "ADC" , "ADC", "ADC", "ADC"  , "ADC" , "ADC", "ADC" , // 8
+    "SUB" , "SUB", "SUB" , "SUB", "SUB"   , "SUB" , "SUB" , "SUB" , "SBC", "SBC" , "SBC", "SBC", "SBC"  , "SBC" , "SBC", "SBC" , // 9
+    "AND" , "AND", "AND" , "AND", "AND"   , "AND" , "AND" , "AND" , "XOR", "XOR" , "XOR", "XOR", "XOR"  , "XOR" , "XOR", "XOR" , // A
+    "OR"  , "OR" , "OR"  , "OR" , "OR"    , "OR"  , "OR"  , "OR"  , "CP" , "CP"  , "CP" , "CP" , "CP"   , "CP"  , "CP" , "CP"  , // B
+    "RET" , "POP", "JPNZ", "JP" , "CALNZ" , "PUSH", "ADD" , "RST" , "RET", "RET" , "JPZ", "CB" , "CALLZ", "CALL", "ADC", "RST" , // C
+    "RET" , "POP", "JPNC", "ERR", "CALLNC", "PUSH", "SUB" , "RST" , "RET", "RETI", "JPC", "ERR", "CALLC", "ERR" , "SBC", "RST" , // D
+    "LD"  , "POP", "LD"  , "ERR", "ERR"   , "PUSH", "AND" , "RST" , "ADD", "JP"  , "LD" , "ERR", "ERR"  , "ERR" , "XOR", "RST" , // E
+    "LD"  , "POP", "LD"  , "DI" , "ERR"   , "PUSH", "OR"  , "RST" , "LD" , "LD"  , "LD" , "EI" , "ERR"  , "ERR" , "CP" , "RST"   // F
 };
+// clang-format on
 
 DisassemblyObject::DisassemblyObject(const char *instrName)
 {
