@@ -1,3 +1,5 @@
+#include <_types/_uint16_t.h>
+#include <_types/_uint8_t.h>
 #include <cstdio>
 #include <cstdint>
 
@@ -10,7 +12,7 @@
 Processor::Processor(Memory *mem)
 {
     memory = mem;
-    PC = 0;
+    PC = 0x100;
     for(int i = 0; i < 8; i++)
     {
         reg[i] = 0;
@@ -37,7 +39,6 @@ int Processor::Tick()
     int cycles = cycleTable[opcode];
     //printf("REEEEE");
     DisassemblyObject disObj(opcode);
-    logGB(disObj);
     
     switch (opcode)
     {
@@ -72,6 +73,9 @@ int Processor::Tick()
         setRegisterPair(rp, val);
         reg[2 * p] = d1;
         reg[2 * p + 1] = d2;
+        
+        disObj.addArg(rp);
+        disObj.addArg(val);
         break;
     }
     case 0x31: // LD SP,d16
@@ -80,13 +84,22 @@ int Processor::Tick()
         uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
         PC += 2;
         SP = d16;
+
+        disObj.addArg("SP");
+        disObj.addArg(d16);
         break;
     }
     case 0x02: // LD (BC), A
         memory->setByte(getRegisterPair(RegPair::BC), reg[7]);
+
+        disObj.addArg(RegPair::BC, true);
+        disObj.addArg(Reg::A);
         break;
     case 0x12: // LD (DE), A
         memory->setByte(getRegisterPair(RegPair::DE), reg[7]);
+
+        disObj.addArg(RegPair::DE, true);
+        disObj.addArg(Reg::A);
         break;
     case 0x22: // LD (HL+), A
     {
@@ -94,6 +107,9 @@ int Processor::Tick()
         memory->setByte(HL, reg[7]);
         HL++;
         setRegisterPair(RegPair::HL, HL);
+
+        disObj.addArg(RegPair::HL, true, 1);
+        disObj.addArg(Reg::A);
         break;
     }
     case 0x32: // LD (HL-), A
@@ -102,6 +118,9 @@ int Processor::Tick()
         memory->setByte(HL, reg[7]);
         HL++;
         setRegisterPair(RegPair::HL, HL);
+
+        disObj.addArg(RegPair::HL, true, -1);
+        disObj.addArg(Reg::A);
         break;
     }
     // 8 bit immediate load
@@ -112,12 +131,25 @@ int Processor::Tick()
     case 0x1E: // LD E, d8
     case 0x2E: // LD L, d8
     case 0x3E: // LD A, d8
-        reg[y] = memory->getByte(PC++);
+    {
+        enum Reg::Registers r = static_cast<Reg::Registers>(y);
+        uint8_t d8 = memory->getByte(PC++);
+        reg[r] = d8;
+
+        disObj.addArg(r);
+        disObj.addArg(d8);
+    }
         break;
     // 8 bit immediate indirect load
     case 0x36: // LD (HL), d8
-        memory->setByte(getRegisterPair(RegPair::HL), memory->getByte(PC++));
+    {
+        uint8_t d8 = memory->getByte(PC++);
+        memory->setByte(getRegisterPair(RegPair::HL), d8);
+
+        disObj.addArg(RegPair::HL, true);
+        disObj.addArg(d8);
         break;
+    }
         // LD r[y], r[z]
         // clang-format off
     case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: //LD B, r[z]
@@ -128,8 +160,15 @@ int Processor::Tick()
     case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6F: //LD L, r[z]
     case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: //LD A, r[z]
         // clang-format on
-        reg[y] = reg[z];
+    {
+        enum Reg::Registers ry = static_cast<Reg::Registers>(y);
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
+        reg[ry] = reg[rz];
+
+        disObj.addArg(ry);
+        disObj.addArg(rz);
         break;
+    }
 
     // 8 bit indirect load
     case 0x70: // LD (HL), B
@@ -139,9 +178,14 @@ int Processor::Tick()
     case 0x74: // LD (HL), H
     case 0x75: // LD (HL), L
     case 0x77: // LD (HL), A
-        memory->setByte(getRegisterPair(RegPair::HL), reg[z]);
-        break;
+    {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
+        memory->setByte(getRegisterPair(RegPair::HL), reg[rz]);
 
+        disObj.addArg(RegPair::HL, true);
+        disObj.addArg(rz);
+        break;
+    }
     // TODO: HALT instruction
     case 0x76: // HALT
         break;
@@ -154,14 +198,25 @@ int Processor::Tick()
     case 0x5E: // LD E, (HL)
     case 0x6E: // LD L, (HL)
     case 0x7E: // LD A, (HL)
-        reg[y] = memory->getByte(getRegisterPair(RegPair::HL));
+    {
+        enum Reg::Registers ry = static_cast<Reg::Registers>(y);
+        reg[ry] = memory->getByte(getRegisterPair(RegPair::HL));
+        
+        disObj.addArg(ry);
+        disObj.addArg(RegPair::HL, true);
         break;
-
+    }
     case 0x0A: // LD A, (BC)
         reg[7] = memory->getByte(getRegisterPair(RegPair::BC));
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::BC, true);
         break;
     case 0x1A: // LD A, (DE)
         reg[7] = memory->getByte(getRegisterPair(RegPair::DE));
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::DE, true);
         break;
     case 0x2A: // LD A, (HL+)
     {
@@ -169,6 +224,9 @@ int Processor::Tick()
         reg[7] = memory->getByte(HL);
         HL++;
         setRegisterPair(RegPair::HL, HL);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true, 1);
         break;
     }
     case 0x3A: // LD A, (HL-)
@@ -177,30 +235,45 @@ int Processor::Tick()
         reg[7] = memory->getByte(HL);
         HL--;
         setRegisterPair(RegPair::HL, HL);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true, -1);
         break;
     }
     case 0xE0: // LD (a8), A
     {
         uint16_t address = 0xFF00 + memory->getByte(PC++);
         memory->setByte(address, reg[Reg::A]);
+
+        disObj.addArg(address, true);
+        disObj.addArg(Reg::A);
         break;
     }
     case 0xF0: // LD A, (a8)
     {
         uint16_t address = 0xFF00 + memory->getByte(PC++);
         reg[Reg::A] = memory->getByte(address);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(address, true);
         break;
     }
     case 0xE2: // LD (C), A
     {
         uint16_t address = 0xFF00 + reg[Reg::C];
         memory->setByte(address, reg[Reg::A]);
+
+        disObj.addArg(Reg::C, true);
+        disObj.addArg(Reg::A);
         break;
     }
     case 0xF2: // LD A, (C)
     {
         uint16_t address = 0xFF00 + reg[Reg::C];
         reg[Reg::A] = memory->getByte(address);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(Reg::C, true);
         break;
     }
     case 0xEA: // LD (a16), A
@@ -208,6 +281,9 @@ int Processor::Tick()
         uint16_t address = memory->getByte(PC + 1) + memory->getByte(PC);
         PC += 2;
         memory->setByte(address, reg[Reg::A]);
+
+        disObj.addArg(address, true);
+        disObj.addArg(Reg::A);
         break;
     }
     case 0xFA: // LD A, (a16)
@@ -215,6 +291,9 @@ int Processor::Tick()
         uint16_t address = memory->getByte(PC + 1) + memory->getByte(PC);
         PC += 2;
         reg[Reg::A] = memory->getByte(address);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(address,true);
         break;
     }
     // stack operations:
@@ -228,6 +307,9 @@ int Processor::Tick()
         higher = (SP & 0xFF00) >> 8;
         memory->setByte(address, lower);
         memory->setByte(address + 1, higher);
+
+        disObj.addArg(address,true);
+        disObj.addArg("SP");
         break;
     }
     case 0xC1: // POP BC
@@ -238,6 +320,8 @@ int Processor::Tick()
         enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
         uint16_t popped = stackPop();
         setRegisterPair(rp, popped);
+
+        disObj.addArg(rp);
         break;
     }
     case 0xC5: // PUSH BC
@@ -248,6 +332,8 @@ int Processor::Tick()
         enum RegPair::RegisterPairs rp = static_cast<RegPair::RegisterPairs>(p);
         uint16_t regpPair = getRegisterPair(rp);
         stackPush(regpPair);
+
+        disObj.addArg(rp);
         break;
     }
     case 0xE8: // ADD SP, s8
@@ -265,6 +351,9 @@ int Processor::Tick()
         }
 
         SP = SP + offset;
+
+        disObj.addArg("SP");
+        disObj.addArg(offset);
         break;
     }
     case 0xF8: // LD HL, SP + s8
@@ -282,11 +371,18 @@ int Processor::Tick()
         {
             setFlag(Flag::CARRY);
         }
+
+        disObj.addArg(RegPair::HL);
+        disObj.addArg("SP +");
+        disObj.addArg(offset);
         break;
     }
     case 0xF9: // LD SP, HL
     {
         SP = getRegisterPair(RegPair::HL);
+
+        disObj.addArg("SP");
+        disObj.addArg(RegPair::HL);
         break;
     }
     // relative jump
@@ -294,6 +390,8 @@ int Processor::Tick()
     {
         int8_t offset = memory->getByte(PC++);
         PC += offset;
+
+        disObj.addArg(offset);
         break;
     }
     // conditional relative jump
@@ -308,6 +406,8 @@ int Processor::Tick()
         {
             PC += offset;
         }
+
+        disObj.addArg(offset);
         break;
     }
     // jump
@@ -315,6 +415,8 @@ int Processor::Tick()
     {
         uint16_t d16 = (memory->getByte(PC + 1) << 8) | memory->getByte(PC);
         PC = d16;
+
+        disObj.addArg(d16);
         break;
     }
     // conditional jump
@@ -329,12 +431,16 @@ int Processor::Tick()
         {
             PC = d16;
         }
+
+        disObj.addArg(d16);
         break;
     }
     case 0xE9: // JP HL
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
         PC = HL;
+
+        disObj.addArg(RegPair::HL);
         break;
     }
     // call and ret
@@ -353,6 +459,8 @@ int Processor::Tick()
             stackPush(PC);
             PC = a16;
         }
+
+        disObj.addArg(a16);
         break;
     }
     case 0xC9: // RET
@@ -384,8 +492,11 @@ int Processor::Tick()
     case 0x2C: // INC L
     case 0x3C: // INC A
     {
-        ALUOpUpdateFlag(reg[y], 1, ALUOp::INC);
-        reg[y] += 1;
+        enum Reg::Registers ry = static_cast<Reg::Registers>(y);
+        ALUOpUpdateFlag(reg[ry], 1, ALUOp::INC);
+        reg[ry] += 1;
+
+        disObj.addArg(ry);
         break;
     }
     // indirect increment
@@ -396,6 +507,8 @@ int Processor::Tick()
         ALUOpUpdateFlag(val, 1, ALUOp::INC);
         val++;
         memory->setByte(HL, val);
+
+        disObj.addArg(RegPair::HL, true);
         break;
     }
     // 8 bit decrement
@@ -407,8 +520,11 @@ int Processor::Tick()
     case 0x2D: // DEC L
     case 0x3D: // DEC A
     {
-        ALUOpUpdateFlag(reg[y], 1, ALUOp::DEC);
-        reg[y] -= 1;
+        enum Reg::Registers ry = static_cast<Reg::Registers>(y);
+        ALUOpUpdateFlag(reg[ry], 1, ALUOp::DEC);
+        reg[ry] -= 1;
+
+        disObj.addArg(ry);
         break;
     }
     // indirect decrement
@@ -419,6 +535,8 @@ int Processor::Tick()
         ALUOpUpdateFlag(val, 1, ALUOp::DEC);
         val--;
         memory->setByte(HL, val);
+
+        disObj.addArg(RegPair::HL);
         break;
     }
     // 16 bit increment
@@ -430,11 +548,15 @@ int Processor::Tick()
         uint16_t registerPair = getRegisterPair(rp);
         registerPair++;
         setRegisterPair(rp, registerPair);
+
+        disObj.addArg(rp);
         break;
     }
     case 0x33: // INC SP
     {
         SP++;
+
+        disObj.addArg("SP");
         break;
     }
     // 16 bit decrement
@@ -447,11 +569,14 @@ int Processor::Tick()
         registerPair--;
         setRegisterPair(rp, registerPair);
 
+        disObj.addArg(rp);
         break;
     }
     case 0x3B: // DEC SP
     {
         SP--;
+
+        disObj.addArg("SP");
         break;
     }
     case 0x80: // ADD A, B
@@ -462,10 +587,14 @@ int Processor::Tick()
     case 0x85: // ADD A, L
     case 0x87: // ADD A, A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint8_t val = reg[z]; // value to be added
+        uint8_t val = reg[rz]; // value to be added
         reg[7] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0x86: // ADD A, (HL)
@@ -475,6 +604,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(HL);
         reg[7] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
 
@@ -486,9 +618,13 @@ int Processor::Tick()
     case 0x8D: // ADC A, L
     case 0x8F: // ADC A, A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint8_t val = reg[z] + getFlag(Flag::CARRY); // value to be added
+        uint8_t val = reg[rz] + getFlag(Flag::CARRY); // value to be added
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0x8E: // ADC A, (HL)
@@ -498,6 +634,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(HL) + getFlag(Flag::CARRY);
         reg[7] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
     case 0x90: // SUB A, B
@@ -508,10 +647,14 @@ int Processor::Tick()
     case 0x95: // SUB A, L
     case 0x97: // SUB A, A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint8_t val = reg[z]; // value to be subtracted
+        uint8_t val = reg[rz]; // value to be subtracted
         reg[7] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0x96: // SUB A, (HL)
@@ -522,6 +665,9 @@ int Processor::Tick()
         reg[7] -= val;
         setFlag(Flag::SUBTRACT);
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
 
@@ -533,10 +679,14 @@ int Processor::Tick()
     case 0x9D: // SBC A, L
     case 0x9F: // SBC A, A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint8_t val = reg[z] + getFlag(Flag::CARRY); // value to be subtracted
+        uint8_t val = reg[rz] + getFlag(Flag::CARRY); // value to be subtracted
         reg[7] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0x9E: // SBC A, (HL)
@@ -546,6 +696,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(HL) + getFlag(Flag::ZERO);
         reg[7] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
 
@@ -557,10 +710,14 @@ int Processor::Tick()
     case 0xA5: // AND L
     case 0xA7: // AND A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7];
-        uint8_t val = reg[z];
+        uint8_t val = reg[rz];
         reg[7] &= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::AND);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0xA6: // AND (HL)
@@ -570,6 +727,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(HL);
         reg[7] &= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::AND);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
     case 0xA8: // XOR B
@@ -580,10 +740,14 @@ int Processor::Tick()
     case 0xAD: // XOR L
     case 0xAF: // XOR A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7];
-        uint8_t val = reg[z];
+        uint8_t val = reg[rz];
         reg[7] ^= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::XOR);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0xAE: // XOR (HL)
@@ -593,6 +757,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(HL);
         reg[7] ^= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::XOR);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
     case 0xB0: // OR B
@@ -603,10 +770,14 @@ int Processor::Tick()
     case 0xB5: // OR L
     case 0xB7: // OR A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7];
-        uint8_t val = reg[z];
+        uint8_t val = reg[rz];
         reg[7] |= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::OR);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0xB6: // OR (HL)
@@ -616,6 +787,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(HL);
         reg[7] |= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::OR);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
     case 0xB8: // CMP B
@@ -626,9 +800,13 @@ int Processor::Tick()
     case 0xBD: // CMP L
     case 0xBF: // CMP A
     {
+        enum Reg::Registers rz = static_cast<Reg::Registers>(z);
         uint8_t acc_pre = reg[7];
-        uint8_t val = reg[z];
+        uint8_t val = reg[rz];
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(rz);
         break;
     }
     case 0xBE: // CMP (HL)
@@ -637,6 +815,9 @@ int Processor::Tick()
         uint16_t HL = (reg[4] << 8) | reg[5];
         uint8_t val = memory->getByte(HL);
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(RegPair::HL, true);
         break;
     }
     // 8 bit immediate ALU
@@ -646,6 +827,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++);
         reg[7] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xCE: // ADC d8
@@ -654,6 +838,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++) + getFlag(Flag::CARRY);
         reg[7] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xD6: // SUB d8
@@ -662,6 +849,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++);
         reg[7] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xDE: // SBC d8
@@ -670,6 +860,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++) + getFlag(Flag::CARRY);
         reg[7] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xE6: // AND d8
@@ -678,6 +871,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++);
         reg[7] &= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::AND);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xEE: // XOR d8
@@ -686,6 +882,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++);
         reg[7] ^= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::XOR);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xF6: // OR d8
@@ -694,6 +893,9 @@ int Processor::Tick()
         uint8_t val = memory->getByte(PC++);
         reg[7] |= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::OR);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     case 0xFE: // CMP d8
@@ -701,6 +903,9 @@ int Processor::Tick()
         uint8_t acc_pre = reg[7];
         uint8_t val = memory->getByte(PC++);
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
+
+        disObj.addArg(Reg::A);
+        disObj.addArg(val);
         break;
     }
     // register pair add
@@ -724,6 +929,9 @@ int Processor::Tick()
         }
         HL += regPair;
         setRegisterPair(RegPair::HL, HL);
+
+        disObj.addArg(RegPair::HL);
+        disObj.addArg(regPair);
         break;
     }
     case 0x39: // ADD HL, SP
@@ -731,6 +939,9 @@ int Processor::Tick()
         uint16_t HL = getRegisterPair(RegPair::HL);
         HL += SP;
         setRegisterPair(RegPair::HL, HL);
+
+        disObj.addArg(RegPair::HL);
+        disObj.addArg("SP");
         break;
     }
 
@@ -884,6 +1095,8 @@ int Processor::Tick()
     {
         stackPush(PC);
         PC = y * 8;
+
+        disObj.addArg(y);
         break;
     }
 
@@ -892,6 +1105,7 @@ int Processor::Tick()
         break;
     }
 
+    //logGB(disObj);
     return cycles;
 }
 

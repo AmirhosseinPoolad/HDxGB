@@ -1,3 +1,4 @@
+#include <_stdio.h>
 #include <cstdio>
 #include <string>
 #include "disassembly.h"
@@ -12,5 +13,7 @@ void logGB(const char* str)
 
 void logGB(DisassemblyObject disObj)
 {
-    disObj.print(stdout);
+    FILE* fp = fopen("log.txt", "a");
+    disObj.print(fp);
+    fclose(fp);
 }
