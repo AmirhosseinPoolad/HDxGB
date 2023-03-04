@@ -13,16 +13,57 @@ Processor::Processor(Memory *mem)
 {
     memory = mem;
     PC = 0x100;
-    for(int i = 0; i < 8; i++)
-    {
-        reg[i] = 0;
-    }
-    SP = 0;
+    SP = 0xFFFE;
+    setRegisterPair(RegPair::AF, 0x01B0);
+    setRegisterPair(RegPair::BC, 0x0013);
+    setRegisterPair(RegPair::DE, 0x00D8);
+    setRegisterPair(RegPair::HL, 0x014D);
+
+    memory->setByte(0xFF05, 0x00);
+    memory->setByte(0xFF06, 0x00);
+    memory->setByte(0xFF07, 0x00);
+    memory->setByte(0xFF10, 0x80);
+    memory->setByte(0xFF11, 0xBF);
+    memory->setByte(0xFF12, 0xF3);
+    memory->setByte(0xFF14, 0xBF);
+    memory->setByte(0xFF16, 0x3F);
+    memory->setByte(0xFF17, 0x00);
+    //
+    memory->setByte(0xFF19, 0xBF);
+    memory->setByte(0xFF1A, 0x7F);
+    memory->setByte(0xFF1B, 0xFF);
+    memory->setByte(0xFF1C, 0x9F);
+    memory->setByte(0xFF1E, 0xBF);
+    memory->setByte(0xFF20, 0xFF);
+    memory->setByte(0xFF21, 0x00);
+    memory->setByte(0xFF22, 0x00);
+    memory->setByte(0xFF23, 0xBF);
+    memory->setByte(0xFF24, 0x77);
+    memory->setByte(0xFF25, 0xF3);
+    memory->setByte(0xFF26, 0xF1);
+    memory->setByte(0xFF40, 0x91);
+    memory->setByte(0xFF42, 0x00);
+    memory->setByte(0xFF43, 0x00);
+    memory->setByte(0xFF45, 0x00);
+    memory->setByte(0xFF47, 0xFC);
+    memory->setByte(0xFF48, 0xFF);
+    memory->setByte(0xFF49, 0xFF);
+    memory->setByte(0xFF4A, 0x00);
+    memory->setByte(0xFF4B, 0x00);
+    memory->setByte(0xFFFF, 0x00);
+
     ime = 1;
 }
 
 int Processor::Tick()
 {
+
+    /* FILE *fp = fopen("3log.txt","a");
+    fprintf(fp, "A: %02X F: %02X B: %02X C: %02X D: %02X E: %02X H: %02X L: %02X SP: %04X PC: 00:%04X (%02X %02X %02X %02X)\n",
+            reg[Reg::A], reg[Reg::F], reg[Reg::B], reg[Reg::C], reg[Reg::D], reg[Reg::E], reg[Reg::H], reg[Reg::L], SP, PC,
+            memory->getByte(PC), memory->getByte(PC+1), memory->getByte(PC+2), memory->getByte(PC+3));
+    fclose(fp); */
+
     // Check out this link for GBC's instruction table and decoding informations:
     // https://meganesulli.com/generate-gb-opcodes/
     // https://gb-archive.github.io/salvage/decoding_gbz80_opcodes/Decoding%20Gamboy%20Z80%20Opcodes.html
@@ -90,13 +131,13 @@ int Processor::Tick()
         break;
     }
     case 0x02: // LD (BC), A
-        memory->setByte(getRegisterPair(RegPair::BC), reg[7]);
+        memory->setByte(getRegisterPair(RegPair::BC), reg[Reg::A]);
 
         disObj.addArg(RegPair::BC, true);
         disObj.addArg(Reg::A);
         break;
     case 0x12: // LD (DE), A
-        memory->setByte(getRegisterPair(RegPair::DE), reg[7]);
+        memory->setByte(getRegisterPair(RegPair::DE), reg[Reg::A]);
 
         disObj.addArg(RegPair::DE, true);
         disObj.addArg(Reg::A);
@@ -115,7 +156,7 @@ int Processor::Tick()
     case 0x32: // LD (HL-), A
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
-        memory->setByte(HL, reg[7]);
+        memory->setByte(HL, reg[Reg::A]);
         HL++;
         setRegisterPair(RegPair::HL, HL);
 
@@ -207,13 +248,13 @@ int Processor::Tick()
         break;
     }
     case 0x0A: // LD A, (BC)
-        reg[7] = memory->getByte(getRegisterPair(RegPair::BC));
+        reg[Reg::A] = memory->getByte(getRegisterPair(RegPair::BC));
 
         disObj.addArg(Reg::A);
         disObj.addArg(RegPair::BC, true);
         break;
     case 0x1A: // LD A, (DE)
-        reg[7] = memory->getByte(getRegisterPair(RegPair::DE));
+        reg[Reg::A] = memory->getByte(getRegisterPair(RegPair::DE));
 
         disObj.addArg(Reg::A);
         disObj.addArg(RegPair::DE, true);
@@ -221,7 +262,7 @@ int Processor::Tick()
     case 0x2A: // LD A, (HL+)
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
-        reg[7] = memory->getByte(HL);
+        reg[Reg::A] = memory->getByte(HL);
         HL++;
         setRegisterPair(RegPair::HL, HL);
 
@@ -232,7 +273,7 @@ int Processor::Tick()
     case 0x3A: // LD A, (HL-)
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
-        reg[7] = memory->getByte(HL);
+        reg[Reg::A] = memory->getByte(HL);
         HL--;
         setRegisterPair(RegPair::HL, HL);
 
@@ -278,8 +319,9 @@ int Processor::Tick()
     }
     case 0xEA: // LD (a16), A
     {
-        uint16_t address = memory->getByte(PC + 1) + memory->getByte(PC);
-        PC += 2;
+        uint8_t d2 = memory->getByte(PC++); // low byte of d16
+        uint8_t d1 = memory->getByte(PC++); // high byte of d16
+        uint16_t address = (d1 << 8) | d2;
         memory->setByte(address, reg[Reg::A]);
 
         disObj.addArg(address, true);
@@ -288,8 +330,9 @@ int Processor::Tick()
     }
     case 0xFA: // LD A, (a16)
     {
-        uint16_t address = memory->getByte(PC + 1) + memory->getByte(PC);
-        PC += 2;
+        uint8_t d2 = memory->getByte(PC++); // low byte of d16
+        uint8_t d1 = memory->getByte(PC++); // high byte of d16
+        uint16_t address = (d1 << 8) | d2;
         reg[Reg::A] = memory->getByte(address);
 
         disObj.addArg(Reg::A);
@@ -590,9 +633,9 @@ int Processor::Tick()
     case 0x87: // ADD A, A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
         uint8_t val = reg[rz]; // value to be added
-        reg[7] += val;
+        reg[Reg::A] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
 
         disObj.addArg(Reg::A);
@@ -601,10 +644,10 @@ int Processor::Tick()
     }
     case 0x86: // ADD A, (HL)
     {
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
-        reg[7] += val;
+        reg[Reg::A] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
 
         disObj.addArg(Reg::A);
@@ -621,7 +664,7 @@ int Processor::Tick()
     case 0x8F: // ADC A, A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
         uint8_t val = reg[rz] + getFlag(Flag::CARRY); // value to be added
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
 
@@ -631,10 +674,10 @@ int Processor::Tick()
     }
     case 0x8E: // ADC A, (HL)
     {
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL) + getFlag(Flag::CARRY);
-        reg[7] += val;
+        reg[Reg::A] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
 
         disObj.addArg(Reg::A);
@@ -650,9 +693,9 @@ int Processor::Tick()
     case 0x97: // SUB A, A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
         uint8_t val = reg[rz]; // value to be subtracted
-        reg[7] -= val;
+        reg[Reg::A] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
 
         disObj.addArg(Reg::A);
@@ -661,11 +704,10 @@ int Processor::Tick()
     }
     case 0x96: // SUB A, (HL)
     {
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
-        reg[7] -= val;
-        setFlag(Flag::SUBTRACT);
+        reg[Reg::A] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
 
         disObj.addArg(Reg::A);
@@ -682,9 +724,9 @@ int Processor::Tick()
     case 0x9F: // SBC A, A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
         uint8_t val = reg[rz] + getFlag(Flag::CARRY); // value to be subtracted
-        reg[7] -= val;
+        reg[Reg::A] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
 
         disObj.addArg(Reg::A);
@@ -693,10 +735,10 @@ int Processor::Tick()
     }
     case 0x9E: // SBC A, (HL)
     {
-        uint8_t acc_pre = reg[7]; //accumulator before alu operation
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A]; //accumulator before alu operation
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL) + getFlag(Flag::ZERO);
-        reg[7] -= val;
+        reg[Reg::A] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
 
         disObj.addArg(Reg::A);
@@ -713,9 +755,9 @@ int Processor::Tick()
     case 0xA7: // AND A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = reg[rz];
-        reg[7] &= val;
+        reg[Reg::A] &= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::AND);
 
         disObj.addArg(Reg::A);
@@ -724,10 +766,10 @@ int Processor::Tick()
     }
     case 0xA6: // AND (HL)
     {
-        uint8_t acc_pre = reg[7];
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
-        reg[7] &= val;
+        reg[Reg::A] &= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::AND);
 
         disObj.addArg(Reg::A);
@@ -743,9 +785,9 @@ int Processor::Tick()
     case 0xAF: // XOR A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = reg[rz];
-        reg[7] ^= val;
+        reg[Reg::A] ^= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::XOR);
 
         disObj.addArg(Reg::A);
@@ -754,10 +796,10 @@ int Processor::Tick()
     }
     case 0xAE: // XOR (HL)
     {
-        uint8_t acc_pre = reg[7];
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
-        reg[7] ^= val;
+        reg[Reg::A] ^= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::XOR);
 
         disObj.addArg(Reg::A);
@@ -773,9 +815,9 @@ int Processor::Tick()
     case 0xB7: // OR A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = reg[rz];
-        reg[7] |= val;
+        reg[Reg::A] |= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::OR);
 
         disObj.addArg(Reg::A);
@@ -784,10 +826,10 @@ int Processor::Tick()
     }
     case 0xB6: // OR (HL)
     {
-        uint8_t acc_pre = reg[7];
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
-        reg[7] |= val;
+        reg[Reg::A] |= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::OR);
 
         disObj.addArg(Reg::A);
@@ -803,7 +845,7 @@ int Processor::Tick()
     case 0xBF: // CMP A
     {
         enum Reg::Registers rz = static_cast<Reg::Registers>(z);
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = reg[rz];
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
 
@@ -813,8 +855,8 @@ int Processor::Tick()
     }
     case 0xBE: // CMP (HL)
     {
-        uint8_t acc_pre = reg[7];
-        uint16_t HL = (reg[4] << 8) | reg[5];
+        uint8_t acc_pre = reg[Reg::A];
+        uint16_t HL = getRegisterPair(RegPair::HL);
         uint8_t val = memory->getByte(HL);
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
 
@@ -825,9 +867,9 @@ int Processor::Tick()
     // 8 bit immediate ALU
     case 0xC6: // ADD d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++);
-        reg[7] += val;
+        reg[Reg::A] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
 
         disObj.addArg(Reg::A);
@@ -836,9 +878,9 @@ int Processor::Tick()
     }
     case 0xCE: // ADC d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++) + getFlag(Flag::CARRY);
-        reg[7] += val;
+        reg[Reg::A] += val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::ADD);
 
         disObj.addArg(Reg::A);
@@ -847,9 +889,9 @@ int Processor::Tick()
     }
     case 0xD6: // SUB d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++);
-        reg[7] -= val;
+        reg[Reg::A] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
 
         disObj.addArg(Reg::A);
@@ -858,9 +900,9 @@ int Processor::Tick()
     }
     case 0xDE: // SBC d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++) + getFlag(Flag::CARRY);
-        reg[7] -= val;
+        reg[Reg::A] -= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::SUB);
 
         disObj.addArg(Reg::A);
@@ -869,9 +911,9 @@ int Processor::Tick()
     }
     case 0xE6: // AND d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++);
-        reg[7] &= val;
+        reg[Reg::A] &= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::AND);
 
         disObj.addArg(Reg::A);
@@ -880,9 +922,9 @@ int Processor::Tick()
     }
     case 0xEE: // XOR d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++);
-        reg[7] ^= val;
+        reg[Reg::A] ^= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::XOR);
 
         disObj.addArg(Reg::A);
@@ -891,9 +933,9 @@ int Processor::Tick()
     }
     case 0xF6: // OR d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++);
-        reg[7] |= val;
+        reg[Reg::A] |= val;
         ALUOpUpdateFlag(acc_pre, val, ALUOp::OR);
 
         disObj.addArg(Reg::A);
@@ -902,7 +944,7 @@ int Processor::Tick()
     }
     case 0xFE: // CMP d8
     {
-        uint8_t acc_pre = reg[7];
+        uint8_t acc_pre = reg[Reg::A];
         uint8_t val = memory->getByte(PC++);
         ALUOpUpdateFlag(acc_pre, val, ALUOp::CMP);
 
@@ -939,7 +981,19 @@ int Processor::Tick()
     case 0x39: // ADD HL, SP
     {
         uint16_t HL = getRegisterPair(RegPair::HL);
-        HL += SP;
+        uint16_t regPair = SP;
+        resetFlag(Flag::SUBTRACT);
+        resetFlag(Flag::ZERO);
+        resetFlag(Flag::HALF_CARRY);
+        if ((HL + regPair) == 0)
+        {
+            setFlag(Flag::ZERO);
+        }
+        if ((HL & 0xFFF) + (regPair & 0xFFF) > 0xFFF)
+        {
+            setFlag(Flag::HALF_CARRY);
+        }
+        HL += regPair;
         setRegisterPair(RegPair::HL, HL);
 
         disObj.addArg(RegPair::HL);
@@ -949,11 +1003,11 @@ int Processor::Tick()
 
     case 0x07: // RLCA
     {
-        bool carry = reg[7] & 0x80; // last bit of reg a
-        reg[7] = reg[7] << 1;
+        bool carry = reg[Reg::A] & 0x80; // last bit of reg a
+        reg[Reg::A] = reg[Reg::A] << 1;
         if (carry)
         {
-            reg[7] |= 0x1; // first bit should be set
+            reg[Reg::A] |= 0x1; // first bit should be set
             setFlag(Flag::CARRY); // carry flag set
         }
         else
@@ -967,16 +1021,16 @@ int Processor::Tick()
     }
     case 0x17: // RLA
     {
-        bool lbit = reg[7] & 0x80; // last bit of reg a
+        bool lbit = reg[Reg::A] & 0x80; // last bit of reg a
         uint8_t cflag = getFlag(Flag::CARRY);
-        reg[7] = reg[7] << 1;
+        reg[Reg::A] = reg[Reg::A] << 1;
         if (lbit)
             setFlag(Flag::CARRY);
         else
             setFlag(Flag::CARRY);
 
         if (cflag)
-            reg[7] |= 0x1;
+            reg[Reg::A] |= 0x1;
         
         resetFlag(Flag::ZERO);
         resetFlag(Flag::HALF_CARRY);
@@ -985,11 +1039,11 @@ int Processor::Tick()
     }
     case 0x0F: // RRCA
     {
-        bool carry = reg[7] & 0x01; // first bit of reg a
-        reg[7] = reg[7] >> 1;
+        bool carry = reg[Reg::A] & 0x01; // first bit of reg a
+        reg[Reg::A] = reg[Reg::A] >> 1;
         if (carry)
         {
-            reg[7] |= 0x80; // last bit should be set
+            reg[Reg::A] |= 0x80; // last bit should be set
             setFlag(Flag::CARRY); // carry flag set
         }
         else
@@ -1003,16 +1057,16 @@ int Processor::Tick()
     }
     case 0x1F: // RRA
     {
-        bool rbit = reg[7] & 0x01; // first bit of reg a
+        bool rbit = reg[Reg::A] & 0x01; // first bit of reg a
         uint8_t cflag = getFlag(Flag::CARRY);
-        reg[7] = reg[7] >> 1;
+        reg[Reg::A] = reg[Reg::A] >> 1;
         if (rbit)
             setFlag(Flag::CARRY);
         else
             setFlag(Flag::CARRY);
 
         if (cflag)
-            reg[7] |= 0x80;
+            reg[Reg::A] |= 0x80;
         
         resetFlag(Flag::ZERO);
         resetFlag(Flag::HALF_CARRY);
@@ -1073,7 +1127,7 @@ int Processor::Tick()
     }
     case 0x2F: // CPL Complement
     {
-        reg[7] = ~reg[7];
+        reg[Reg::A] = ~reg[Reg::A];
         setFlag(Flag::SUBTRACT);
         setFlag(Flag::HALF_CARRY);
         break;
@@ -1107,7 +1161,7 @@ int Processor::Tick()
         break;
     }
 
-    logGB(disObj);
+    //logGB(disObj);
     return cycles;
 }
 
@@ -1143,16 +1197,16 @@ bool Processor::checkCondition(int8_t cc)
 
 void Processor::setFlag(enum Flag::Flags flag)
 {
-    reg[6] |= (1U << flag);
+    reg[Reg::F] |= (1U << flag);
 }
 void Processor::resetFlag(enum Flag::Flags flag)
 {
-    reg[6] &= ~(1U << flag);
+    reg[Reg::F] &= ~(1U << flag);
 }
 
 uint8_t Processor::getFlag(enum Flag::Flags flag)
 {
-    return (reg[6] >> flag) & 1U;
+    return (reg[Reg::F] >> flag) & 1U;
 }
 
 void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operation op)
@@ -1229,6 +1283,8 @@ void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operati
     case ALUOp::AND:
         if ((uint8_t)(acc_pre & val) == 0)
             setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
         resetFlag(Flag::SUBTRACT);
         setFlag(Flag::HALF_CARRY);
         resetFlag(Flag::CARRY);
@@ -1237,6 +1293,8 @@ void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operati
     case ALUOp::OR:
         if ((uint8_t)(acc_pre | val) == 0)
             setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
         resetFlag(Flag::SUBTRACT);
         resetFlag(Flag::HALF_CARRY);
         resetFlag(Flag::CARRY);
@@ -1245,6 +1303,8 @@ void Processor::ALUOpUpdateFlag(uint8_t acc_pre,uint8_t val, enum ALUOp::Operati
     case ALUOp::XOR:
         if ((uint8_t)(acc_pre ^ val) == 0)
             setFlag(Flag::ZERO);
+        else
+            resetFlag(Flag::ZERO);
         resetFlag(Flag::SUBTRACT);
         resetFlag(Flag::HALF_CARRY);
         resetFlag(Flag::CARRY);

@@ -82,7 +82,7 @@ void DisassemblyObject::addArg(Reg::Registers reg, bool isMem, int postpre)
 void DisassemblyObject::addArg(uint8_t u8, bool isMem, int postpre)
 {
     std::stringstream stream;
-    stream << "0x" << std::hex << u8;
+    stream << "0x" << std::hex << static_cast<uint16_t>(u8);
     this->addArg(stream.str().c_str(), isMem, postpre);
 }
 
