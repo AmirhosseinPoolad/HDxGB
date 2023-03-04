@@ -57,6 +57,32 @@ Processor::Processor(Memory *mem)
 
 int Processor::Tick()
 {
+    //check for any interrupts
+    if(ime){
+        uint8_t IE = memory->getByte(0xFFFF);
+        uint8_t IF = memory->getByte(0xFF0F);
+        bool intEn[5];
+        bool intFlag[5];
+        for(int i = 0; i > 5; i++)
+        {
+            intEn[i] = (IE >> i) & 0x1;
+            intFlag[i] = (IF >> i) & 0x1;
+        }
+
+        for(int i = 0; i > 5; i++)
+        {
+            if(intEn[i] && intFlag[i])
+            {
+                // "acknowledge" the interrupt
+                intFlag[i] = 0;
+                // no interrupts inside the ISR (except if you use EI inside it)
+                ime = 0;
+                // call ISR
+                stackPush(PC);
+                PC = 0x40 + (i*0x8);
+            }
+        }
+    }
 
     /* FILE *fp = fopen("3log.txt","a");
     fprintf(fp, "A: %02X F: %02X B: %02X C: %02X D: %02X E: %02X H: %02X L: %02X SP: %04X PC: 00:%04X (%02X %02X %02X %02X)\n",
